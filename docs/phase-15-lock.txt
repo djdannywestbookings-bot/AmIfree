@@ -1,0 +1,30 @@
+Phase 15 lock record
+
+Date: 2026-04-09
+Phase: [15] Expansion Architecture for Multi-User SaaS
+Status: locked
+
+Audit result:
+- Booking remains the only calendar-truth object.
+- Request-linkage behavior remains unchanged.
+- Agenda remains Bookings only.
+- Coverage remains Shift Occurrences only.
+- Occurrence capacity math remains open_slots_count = max(slots_needed - filled_slots_count - active_request_count, 0).
+- Public sharing remains Busy or Busy + Region only.
+- Internal staffing eligibility remains separate from public sharing visibility.
+- Notifications remain in-app first for MVP.
+- Expansion path remains additive and compatible with the modular monolith.
+- Workspace ownership, person identity, and organization tenancy expand without duplicating Booking truth.
+
+Approved output file:
+- docs/phase-15-expansion-architecture-for-multi-user-saas.final.md
+
+5-phase block status:
+- [11] Post-Launch Stabilization Plan - complete
+- [12] V1 / Post-MVP Prioritization - complete
+- [13] Growth Loops & User Adoption - complete
+- [14] Support & Operations Playbook - complete
+- [15] Expansion Architecture for Multi-User SaaS - complete
+
+Next repo follow-up:
+- add the phase 16 to 20 handoff packet and next-block prompts
