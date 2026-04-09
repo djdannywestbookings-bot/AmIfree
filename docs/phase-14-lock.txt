@@ -1,0 +1,21 @@
+Phase 14 lock record
+
+Date: 2026-04-09
+Phase: [14] Support & Operations Playbook
+Status: locked
+
+Audit result:
+- Booking remains the only calendar-truth object.
+- Request-linkage behavior remains unchanged.
+- Agenda remains Bookings only.
+- Coverage remains Shift Occurrences only.
+- Occurrence capacity math remains open_slots_count = max(slots_needed - filled_slots_count - active_request_count, 0).
+- Public sharing remains Busy or Busy + Region only.
+- Internal staffing eligibility remains separate from public sharing visibility.
+- Notifications remain in-app first for MVP.
+
+Approved output file:
+- docs/phase-14-support-operations-playbook.final.md
+
+Next phase:
+- [15] Expansion Architecture for Multi-User SaaS
