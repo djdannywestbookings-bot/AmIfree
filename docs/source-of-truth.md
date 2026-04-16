@@ -1,6 +1,6 @@
 # AmIFree Scheduler — Source of Truth
 
-_Last updated: 2026-04-09_
+_Last updated: 2026-04-13_
 
 ## Project identity
 
@@ -25,14 +25,11 @@ _Last updated: 2026-04-09_
 - [11] Phase — Post-Launch Stabilization Plan
 - [12] Phase — V1 / Post-MVP Prioritization
 - [13] Phase — Growth Loops & User Adoption
+- [26] Phase — Multi-User and Tenant Boundary Foundation
 
-## Current active block
+## Current active phase
 
-- [11] Phase — Post-Launch Stabilization Plan
-- [12] Phase — V1 / Post-MVP Prioritization
-- [13] Phase — Growth Loops & User Adoption
-- [14] Phase — Support & Operations Playbook
-- [15] Phase — Expansion Architecture for Multi-User SaaS
+- [27] Phase — Internal Admin, Repair, and Ops Console
 
 ## Locked core product truths
 
@@ -161,6 +158,20 @@ open_slots_count = max(slots_needed - filled_slots_count - active_request_count,
 - Notifications are in-app first for MVP.
 - Workflow email delivery is not a required MVP launch dependency.
 
+## Locked multi-user and tenant-boundary truths
+
+- Workspace is the tenant boundary for operational data ownership and authorization.
+- All core operational records must be workspace-owned.
+- No raw cross-workspace reads are allowed.
+- Public sharing remains workspace-scoped and projection-only.
+- Public shared busy includes only:
+  - Assigned bookings
+  - Booked bookings
+  - Active Manual Availability Blocks
+- Inquiry, Hold, and Requested do not appear in public shared busy.
+- Multi-user expansion must preserve strict separation between Booking, Manual Availability Block, Booking Request, Shift Template, and Shift Occurrence.
+- Multi-user expansion must preserve private source-of-truth schedule logic for internal staffing eligibility.
+
 ## Locked operating truths from launch, stabilization, and growth
 
 - Correctness, privacy, request-linkage integrity, occurrence-capacity integrity, role safety, and mobile usability outrank breadth.
@@ -171,9 +182,8 @@ open_slots_count = max(slots_needed - filled_slots_count - active_request_count,
 
 ## Current execution status
 
-- First 13 phases are complete and locked.
-- Phase 14 is currently being documented.
-- Phase 15 is the next phase in the current 5-phase block.
+- Phase 26 is complete and locked.
+- Phase 27 is active.
 
 ## Repository note
 
