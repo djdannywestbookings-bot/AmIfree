@@ -1,6 +1,6 @@
 # AmIFree Scheduler - Roadmap and Phase Tracker
 
-Last updated: 2026-04-13
+Last updated: 2026-04-15
 
 ## Coordination rules
 
@@ -26,6 +26,18 @@ Last updated: 2026-04-13
 - [11] Phase - Post-Launch Stabilization Plan
 - [12] Phase - V1 / Post-MVP Prioritization
 - [13] Phase - Growth Loops & User Adoption
+- [14] Phase - Support & Operations Playbook
+- [15] Phase - Expansion Architecture for Multi-User SaaS
+- [16] Phase - Engineering Delivery Plan V1
+- [17] Phase - Internal Admin & Ops Tooling
+- [18] Phase - Security, Privacy & Compliance Hardening
+- [19] Phase - Data Model Evolution & Migration Strategy
+- [20] Phase - Reporting, Dashboards & Internal BI
+- [21] Phase - App Shell Audit & Build Rescue
+- [22] Phase - Canonical Beta Foundation
+- [23] Phase - UNRESOLVED GAP (no doc artifact found)
+- [24] Phase - UNRESOLVED GAP (no doc artifact found)
+- [25] Phase - UNRESOLVED GAP (no doc artifact found)
 - [26] Phase - Multi-User and Tenant Boundary Foundation
 
 ## Current phase status
@@ -43,8 +55,7 @@ Last updated: 2026-04-13
 - Staffing eligibility remains separate from external sharing visibility.
 - Notifications are in-app first for MVP.
 - Correctness, privacy, and schedule integrity outrank breadth.
-- Workspace is the tenant boundary.
-- No raw cross-workspace reads are allowed.
+- Workspace is the tenant boundary. No raw cross-workspace reads are allowed.
 - Public sharing remains workspace-scoped and projection-only.
 
 ## Open risks to track
@@ -53,11 +64,11 @@ Last updated: 2026-04-13
 - Support and operations workflows must not weaken product truth for convenience.
 - Multi-user SaaS expansion must preserve booking, request, staffing, and privacy integrity.
 - Tenant-boundary expansion must not weaken workspace isolation, request-linkage integrity, or public-share privacy.
+- Phases 23-25 have no doc artifacts in accessible git history; their names and status are unresolved and must not be fabricated.
 
 ## Repo bootstrap files
 
 - README.md
 - docs/source-of-truth.md
 - docs/roadmap.md
-- docs/phases/14-support-operations-playbook.prompt.md
 - docs/phases/26-multi-user-and-tenant-boundary-foundation.md
