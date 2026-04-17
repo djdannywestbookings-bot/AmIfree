@@ -9,7 +9,7 @@ export default function IngestPage() {
   const [appliedIds, setAppliedIds] = useState<Set<string>>(new Set())
 
   function handleExtract() {
-    if (text.trim().length > 0 || true) setShowResults(true)
+        setShowResults(true)
   }
 
   function handleApply(id: string) {
