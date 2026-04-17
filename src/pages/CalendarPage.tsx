@@ -4,15 +4,19 @@ import ConflictBadge from '../components/booking/ConflictBadge'
 import StatusBadge from '../components/booking/StatusBadge'
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 
-const today = new Date(2026, 3, 15) // Apr 15 2026
+const today = new Date()
 const weekDates = getWeekDates(today)
+const weekStart = weekDates[0]!
+const weekEnd = weekDates[6]!
+const weekLabel = `Week of ${MONTHS[weekStart.getMonth()]} ${weekStart.getDate()} – ${weekEnd.getDate()}, ${weekStart.getFullYear()}`
 
 export default function CalendarPage() {
   return (
     <div className="pb-6">
       <div className="sticky top-0 bg-background z-10 border-b border-border px-4 py-3">
-        <h2 className="text-sm font-semibold">Week of Apr 13 – 19, 2026</h2>
+        <h2 className="text-sm font-semibold">{weekLabel}</h2>
         <p className="text-xs text-muted-foreground mt-0.5">
           Bookings grouped by nightlife start day. Cross-midnight gigs (+1) stay on their starting day.
         </p>
