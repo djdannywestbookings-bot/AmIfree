@@ -80,7 +80,7 @@ export default function LoginPage() {
         ) : (
           <form onSubmit={handleOtpSubmit} className="space-y-4">
             <p className="text-sm text-neutral-600">
-              We sent a 6-digit code to <strong>{email}</strong>. Enter it below.
+              We sent a sign-in code to <strong>{email}</strong>. Enter it below.
             </p>
             <label className="block">
               <span className="block text-sm mb-1">Code</span>
@@ -91,8 +91,8 @@ export default function LoginPage() {
                 autoFocus
                 inputMode="numeric"
                 autoComplete="one-time-code"
-                pattern="[0-9]{6}"
-                maxLength={6}
+                pattern="[0-9]{6,10}"
+                maxLength={10}
                 className="w-full rounded border border-neutral-300 px-3 py-2 bg-transparent font-mono tracking-widest text-center focus:outline-none focus:ring-2 focus:ring-neutral-900"
               />
             </label>

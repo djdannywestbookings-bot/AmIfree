@@ -11,7 +11,12 @@ const emailSchema = z
   .toLowerCase()
   .email("Enter a valid email address.");
 
-const otpSchema = z.string().regex(/^\d{6}$/, "The code must be 6 digits.");
+// Supabase's default OTP length varies by project setting (6 or 8 digits
+// commonly; 10 is the upper bound). Accept the full supported range rather
+// than hard-coding a single length.
+const otpSchema = z
+  .string()
+  .regex(/^\d{6,10}$/, "The code must be 6–10 digits.");
 
 export type ActionResult =
   | { ok: true; email: string }
@@ -47,7 +52,7 @@ export async function sendOtp(formData: FormData): Promise<ActionResult> {
 }
 
 /**
- * Server action: verify the 6-digit code from the email. On success,
+ * Server action: verify the sign-in code from the email. On success,
  * redirects to /agenda (the default authenticated landing route).
  */
 export async function verifyOtp(formData: FormData): Promise<ActionResult> {
