@@ -1,84 +1,139 @@
 # AmIFree Scheduler
 
-AmIFree Scheduler is a mobile-first SaaS scheduling and booking platform / PWA built for DJs.
+A mobile-first prototype of a DJ scheduling app, built as a Vite + React SPA
+running on in-memory mock data. No backend, no auth, no persistence —
+refreshing the page resets everything.
 
-## Repository status
+This repo is a storyboard of five screens wired together with local React
+state, intended as a fast iteration surface for booking/conflict UX before
+we commit to any backend or framework decisions.
 
-This repository currently contains **project documentation and source-of-truth planning artifacts**.
+## Running locally
 
-At the time of this push, the connected workspace did **not** contain the application source code, so this commit bootstraps the repo with the approved product truth, roadmap, and current phase prompt rather than pretending code already exists.
+    npm install
+    npm run dev        # local dev server (Vite, http://localhost:5173)
+    npm run build      # type-check (tsc -b) + production build
+    npm test           # vitest in watch mode
+    npm run test:run   # single vitest run
+    npm run lint       # eslint
 
-## Product summary
+## Screens
 
-AmIFree is a DJ-first scheduling system designed to keep booking truth, staffing logic, request-linkage integrity, and privacy-safe sharing clear and separate.
+- **Dashboard** — stat tiles (Total / Upcoming / Conflicts) and a sorted list
+  of all bookings with expand-to-see-details cards.
+- **Calendar** — the current week (Mon–Sun), bookings grouped by nightlife
+  start day.
+- **Ingest** — UI for pasting a message to extract a booking from it. The
+  textarea is currently ignored and the "Extract" button shows two hardcoded
+  mock results; this screen is visual-only.
+- **Availability** — owner-view / shared-view toggle demonstrating the
+  privacy surface a DJ would share with a promoter.
+- **Schedule** — pick a venue, see its recurring shifts, assign an available
+  DJ. Assignment state is per-page and does not persist.
 
-### Locked MVP product truths
+## Domain model
 
-- Booking is the only calendar-truth object.
-- Manual Availability Blocks are explicit, separate schedule objects.
-- Booking Request, Shift Occurrence, and Booking remain separate objects.
-- Shift Templates and one-off Shift Occurrences are separate flows and separate objects.
-- AI extraction is review-before-save.
-- Intake Drafts stage Booking creation only in MVP.
-- Intake is DJ / Manager Lite only in MVP.
-- Shared viewer modes are only:
-  - Busy
-  - Busy + Region
-- Operator Schedule is:
-  - Agenda = Bookings only
-  - Coverage = Shift Occurrences only
-- Internal staffing eligibility uses private source-of-truth schedule logic.
-- "Not shared" is not the same as "not eligible" internally.
-- Operators cannot force-assign hard-conflicted DJs.
-- Hard-conflicted items cannot advance to Assigned or Booked.
+All types live in `src/types/index.ts`. Core entities:
 
-### Locked technical direction
+- **DJ** — `id`, `name`, `available`, `city`, `state`.
+- **Venue** — `id`, `name`, `city`, `state`, owning `operatorId`.
+- **Operator** — a venue owner / promoter with a list of `venueIds`.
+- **Booking** — the primary object: `djId`, `venueId`, `title`,
+  `nightlifeDate`, `startTime`, `endTime`, flags (`crossMidnight`,
+  `afterHours`), `status`, `conflict`, `fee`, `notes`, ingestion `source`,
+  and pre-written `followUpMessages`.
+- **RecurringShift** — a venue's weekly slot (`dayOfWeek`, `startTime`,
+  `endTime`, `crossMidnight`, `afterHours`, `assignedDJId`).
+- **ExtractionResult** — output shape for a parsed booking message.
 
-- TypeScript modular monolith
-- Next.js App Router PWA
-- Supabase Postgres / Auth / Storage
-- Graphile Worker for async jobs
-- OpenAI Responses API for structured extraction
-- `schedule_commitments` as the normalized overlap surface
-- In-app notifications first for MVP
+### Nightlife-day concept
 
-## Current project phase state
+Booking times use a "nightlife day" convention rather than a raw calendar
+day. A Friday 22:00–02:00 set stays anchored to Friday
+(`crossMidnight: true`); a 02:00–05:00 after-hours set that runs into
+Saturday morning belongs to Saturday's extended night (`afterHours: true`).
+Time helpers in `src/utils/time.ts` respect this — `formatTimeRange`
+appends `+1` for cross-midnight and `(after-hours)` for early-morning
+service-day sets. The convention is currently a data-entry contract on the
+mocks; there is no function yet that derives it from a raw input.
 
-### Complete
+## What works vs. what's stubbed
 
-- [1] Phase — Product Blueprint
-- [2] Phase — UX/UI System Revision
-- [3] Phase — MVP Wireframes
-- [4] Phase — MVP Functional Spec
-- [5] Phase — MVP Technical Architecture
-- [6] Phase — Database Schema & API Contracts
-- [7] Phase — MVP Build Plan
-- [8] Phase — QA / Test Strategy
-- [9] Phase — Analytics & Operational Metrics
-- [10] Phase — Launch Readiness
-- [11] Phase — Post-Launch Stabilization Plan
-- [12] Phase — V1 / Post-MVP Prioritization
-- [13] Phase — Growth Loops & User Adoption
+Working end-to-end (within a session):
 
-### In progress / queued
+- Dashboard, Calendar, and Availability render correctly from mock data.
+- The Schedule page's DJ assignment dropdown updates local state and
+  reflects in the UI; only available DJs appear as options.
+- Copy-to-clipboard on follow-up messages in the booking card.
 
-- [14] Phase — Support & Operations Playbook
-- [15] Phase — Expansion Architecture for Multi-User SaaS
+Stubbed or non-functional:
 
-## Repo structure
+- **Ingest** — the textarea is ignored; "Extract with AI" always renders
+  the same two hardcoded results; "Add" flips a local flag but does not
+  create a Booking anywhere visible.
+- **Availability** — the "Copy share link" affordance has no click handler.
+- **Conflict detection** — the `conflict` field on each booking is
+  hand-authored in `src/data/mock.ts`. No function computes conflicts;
+  badges show what the mock says.
+- **Cross-page state** — Schedule's assignment edits, Ingest's applied
+  items, and Availability's view-mode toggle all live in per-page local
+  state. Nothing propagates between screens.
+- **Persistence** — there is none; page refresh resets everything.
 
-- `README.md` — repo overview and current status
-- `docs/source-of-truth.md` — approved product, technical, and operating truths
-- `docs/roadmap.md` — current phase tracker and execution order
-- `docs/phases/14-support-operations-playbook.prompt.md` — current phase prompt snapshot
+Known structural issue to fix when we introduce real state:
 
-## Recommended next repo additions
+- **Module-scope data derivations.** Several pages (`DashboardPage`,
+  `CalendarPage`, `AvailabilityPage`, `SchedulePage`) compute filtered or
+  derived collections at the top of the file rather than inside the
+  component. The most visible consequence today is that the Calendar's
+  "current week" is computed exactly once per page load, so leaving the app
+  open across midnight will show the wrong week. Once booking/shift data
+  becomes actually mutable (step 1 of the roadmap below), these hoisted
+  snapshots will go stale and need to move inside the components — likely
+  as memoized selectors off the store.
 
-1. Add the approved phase deliverables as versioned docs.
-2. Add the actual Next.js / Supabase application scaffold.
-3. Add schema, API contracts, worker jobs, and test harnesses.
-4. Add CI, deployment, and environment templates once app code exists.
+## Project layout
 
-## Notes
+    src/
+      App.tsx              # page switcher (useState<Page>)
+      main.tsx             # React root
+      index.css            # Tailwind layers + shadcn-style CSS variables
+      components/
+        layout/AppShell.tsx
+        booking/{BookingCard,StatusBadge,ConflictBadge}.tsx
+        followup/FollowUpPanel.tsx
+        ingestion/ExtractionCard.tsx
+      pages/
+        DashboardPage.tsx
+        CalendarPage.tsx
+        IngestPage.tsx
+        AvailabilityPage.tsx
+        SchedulePage.tsx
+      data/mock.ts         # in-memory DJs, venues, bookings, shifts, extractions
+      types/index.ts       # domain types
+      utils/
+        time.ts            # parse, format, week-bounds helpers
+        time.test.ts       # time-utility tests (vitest)
+        mock-fixtures.test.ts  # tripwire tests on the mock dataset
+      lib/utils.ts         # cn() helper (clsx + tailwind-merge)
 
-This repo bootstrap is intentionally honest: it reflects the planning state of the project without implying that implementation files were already available in this session.
+## Roadmap
+
+Near-term, in order:
+
+1. **Shared state store.** Introduce a lightweight store (React Context +
+   reducer, or Zustand) so edits on one page propagate to others.
+   Concretely, wire the Ingest "Add" button to actually create a Booking
+   visible on Dashboard and Calendar.
+2. **Conflict detection.** Replace the hand-authored `conflict` field with
+   a real `detectConflicts(bookings)` function that respects the
+   nightlife-day rules (same DJ, overlapping effective windows,
+   cross-midnight and after-hours semantics). Ship a proper test file
+   alongside it.
+
+Deferred until the mechanics feel right in the SPA: routing, a component
+primitive library (shadcn/ui or similar), any backend (Supabase, API,
+worker), and screenshot ingest / real LLM extraction.
+
+**This is a prototype, not a product. Treat the code as disposable until
+the mechanics feel right.**
