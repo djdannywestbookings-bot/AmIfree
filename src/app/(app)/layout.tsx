@@ -1,16 +1,15 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { createClient } from "@/lib/supabase/server";
-import { allowedEmails } from "@/lib/config/env.server";
+import { getCurrentActor } from "@/server/policies";
 
 /**
  * Protected shell layout for all (app)/* routes.
  *
  * Middleware already redirects unauthenticated requests to /login — this
  * server-side check is defense in depth, and also enforces the owner
- * allowlist at the shell level so a revoked owner cannot reach protected
- * surfaces until their session expires.
+ * allowlist plus application role at the shell level so a revoked owner
+ * cannot reach protected surfaces until their session expires.
  *
  * Phase 22 §Protected route/app shell plan: Agenda / Coverage / Intake /
  * Settings are the only canonical surfaces, and Agenda = Bookings only
@@ -22,17 +21,9 @@ export default async function AppLayout({
 }: {
   children: ReactNode;
 }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const actor = await getCurrentActor();
 
-  if (!user) {
-    redirect("/login");
-  }
-
-  const email = (user.email ?? "").toLowerCase();
-  if (!allowedEmails.includes(email)) {
+  if (!actor) {
     redirect("/login");
   }
 
@@ -60,7 +51,7 @@ export default async function AppLayout({
             className="text-xs text-neutral-500 hidden sm:inline"
             aria-label="Signed in as"
           >
-            {user.email}
+            {actor.email}
           </span>
         </nav>
       </header>
