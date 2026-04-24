@@ -6,11 +6,12 @@ _Updated at Phase 22 acceptance (slice 16). See `docs/phases/22-acceptance-memo.
 - **Runbook not yet executed.** `docs/ops/deploy-runbook.md` describes the full Vercel + Railway + `amifree-prod` Supabase setup, but the owner has not run it. DoD items 3 and 6 are conservatively conditional on this being done before merging `feat/v0.1-rebuild` to `main`.
 
 ## Infrastructure to close after merge
-- **Slice 10 migration not applied.** `supabase/migrations/0001_reserve_schedule_commitments.sql` is committed but not run against any Supabase project. Apply to `amifree-dev` and `amifree-prod` before real tables land on top.
-- **Worker database connection string.** `GRAPHILE_WORKER_DATABASE_URL` in `.env.local` is currently the Transaction pooler URI. Graphile Worker needs the Session pooler or direct connection (LISTEN/NOTIFY is not proxied by Transaction mode). Owner to swap the value when `npm run worker:dev` is first exercised.
+- **Slice 10 migration applied to `amifree-dev`** 2026-04-20. Re-apply to `amifree-prod` when that project is created per the deploy runbook.
+- **Worker database connection string swapped** 2026-04-20 to the Session pooler URI (port 5432) in `.env.local`. Graphile Worker LISTEN/NOTIFY requirement satisfied.
 
 ## Security hygiene
-- **Leaked credentials.** Dev database password and `amifree-dev` `service_role` key were pasted into chat transcript 2026-04-20. Owner deferred rotation until post-Phase-22. Rotate both before any external surface exists, then update Vercel + Railway secrets plus local `.env.local`.
+- **Database password rotated** 2026-04-20 on `amifree-dev`; new value lives in `.env.local` only.
+- **`service_role` key rotation deferred.** Supabase's current architecture doesn't expose a one-click rotation for legacy `service_role` keys; rotation requires migrating to the new `sb_publishable_` / `sb_secret_` API keys plus a compatibility check on `@supabase/ssr@0.10.2`. The original leaked key remains active on `amifree-dev`. Mitigations: (1) project is dev-only, (2) owner-only access, (3) no production data yet. Track alongside the broader SDK-compat decision before `amifree-prod` provisioning — rotating at that point is cheaper than doing it twice.
 
 ## Operational choices explicitly deferred
 - **Preview deploys disabled.** Re-evaluate once an ephemeral Supabase project strategy exists that keeps preview writes off live owner data.
