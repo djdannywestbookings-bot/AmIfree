@@ -1,4 +1,8 @@
-export default function CoveragePage() {
+import { requireWorkspace } from "@/server/services";
+
+export default async function CoveragePage() {
+  await requireWorkspace();
+
   return (
     <main className="max-w-screen-lg mx-auto p-8">
       <h1 className="text-2xl font-semibold">Coverage</h1>

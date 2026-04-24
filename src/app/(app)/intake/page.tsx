@@ -1,4 +1,8 @@
-export default function IntakePage() {
+import { requireWorkspace } from "@/server/services";
+
+export default async function IntakePage() {
+  await requireWorkspace();
+
   return (
     <main className="max-w-screen-lg mx-auto p-8">
       <h1 className="text-2xl font-semibold">Intake</h1>

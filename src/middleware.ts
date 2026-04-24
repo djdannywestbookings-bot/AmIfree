@@ -10,7 +10,13 @@ import { updateSession } from "@/lib/supabase/middleware";
  * - Session cookies are refreshed on every request via updateSession().
  */
 
-const APP_ROUTE_PREFIXES = ["/agenda", "/coverage", "/intake", "/settings"];
+const APP_ROUTE_PREFIXES = [
+  "/agenda",
+  "/coverage",
+  "/intake",
+  "/settings",
+  "/onboarding",
+];
 
 export async function middleware(request: NextRequest) {
   const { response, user } = await updateSession(request);
