@@ -1,12 +1,15 @@
-import "server-only";
 import { z } from "zod";
 
 /**
  * Server-side environment configuration for AmIFree.
  *
  * Validated at module load. Throws with a clear message listing every
- * missing or invalid variable. Server-only — importing from a client
- * component will fail at build time via the "server-only" package.
+ * missing or invalid variable. Intended for server-side use only — the
+ * file name signals intent, and the Graphile Worker (a plain Node
+ * process, outside Next.js) imports this directly. Previously had an
+ * `import "server-only"` guard; removed 2026-04-24 because that package
+ * throws when resolved outside the Next.js bundler's `react-server`
+ * condition, which broke the worker at startup.
  *
  * See docs/phases/22-canonical-beta-foundation.md §Environment and secrets
  * plan for the full spec.
