@@ -81,10 +81,33 @@ export default async function AgendaPage() {
                 <div className="text-xs text-neutral-500 mt-1">
                   {formatWhen(b)}
                 </div>
-                {b.notes && (
-                  <div className="text-xs text-neutral-600 mt-2 whitespace-pre-wrap">
-                    {b.notes}
-                  </div>
+                {(b.location || b.pay || b.notes) && (
+                  <dl className="text-xs mt-2 space-y-1">
+                    {b.location && (
+                      <div className="flex gap-2">
+                        <dt className="text-neutral-500 w-16 shrink-0">Location</dt>
+                        <dd className="text-neutral-700 min-w-0 break-words">
+                          {b.location}
+                        </dd>
+                      </div>
+                    )}
+                    {b.pay && (
+                      <div className="flex gap-2">
+                        <dt className="text-neutral-500 w-16 shrink-0">Pay</dt>
+                        <dd className="text-neutral-700 min-w-0 break-words">
+                          {b.pay}
+                        </dd>
+                      </div>
+                    )}
+                    {b.notes && (
+                      <div className="flex gap-2">
+                        <dt className="text-neutral-500 w-16 shrink-0">Notes</dt>
+                        <dd className="text-neutral-700 min-w-0 whitespace-pre-wrap break-words">
+                          {b.notes}
+                        </dd>
+                      </div>
+                    )}
+                  </dl>
                 )}
               </div>
 

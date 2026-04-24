@@ -24,6 +24,14 @@ const createFormSchema = z.object({
     .string()
     .optional()
     .transform((v) => v === "on" || v === "true"),
+  location: z
+    .string()
+    .optional()
+    .transform((v) => (v && v.trim().length > 0 ? v.trim() : null)),
+  pay: z
+    .string()
+    .optional()
+    .transform((v) => (v && v.trim().length > 0 ? v.trim() : null)),
   notes: z
     .string()
     .optional()
@@ -35,13 +43,21 @@ export async function createBookingAction(
 ): Promise<AgendaResult> {
   const workspace = await requireWorkspace();
 
+  // FormData.get returns null for fields not in the form (e.g., the
+  // expanded section fields if the user submitted before expanding).
+  // Coerce null → undefined so the Zod schema treats them as missing
+  // rather than as the wrong type.
+  const getOrUndef = (k: string) => formData.get(k) ?? undefined;
+
   const parsed = createFormSchema.safeParse({
-    title: formData.get("title"),
-    status: formData.get("status") ?? "inquiry",
-    start_at: formData.get("start_at"),
-    end_at: formData.get("end_at"),
-    all_day: formData.get("all_day"),
-    notes: formData.get("notes"),
+    title: getOrUndef("title"),
+    status: getOrUndef("status") ?? "inquiry",
+    start_at: getOrUndef("start_at"),
+    end_at: getOrUndef("end_at"),
+    all_day: getOrUndef("all_day"),
+    location: getOrUndef("location"),
+    pay: getOrUndef("pay"),
+    notes: getOrUndef("notes"),
   });
 
   if (!parsed.success) {
@@ -69,6 +85,8 @@ export async function createBookingAction(
       start_at: parsed.data.start_at,
       end_at: parsed.data.end_at,
       all_day: parsed.data.all_day ?? false,
+      location: parsed.data.location,
+      pay: parsed.data.pay,
       notes: parsed.data.notes,
     });
   } catch (err) {

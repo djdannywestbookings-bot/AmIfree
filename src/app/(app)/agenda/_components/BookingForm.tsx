@@ -64,52 +64,80 @@ export function BookingForm() {
       </div>
 
       {expanded && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-neutral-200">
-          <label className="block">
-            <span className="block text-xs font-medium text-neutral-700 mb-1">
-              Status
-            </span>
-            <select
-              name="status"
-              defaultValue="inquiry"
-              className="w-full rounded border border-neutral-300 px-2 py-1.5 text-sm bg-white"
-            >
-              {BOOKING_STATUSES.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
-          </label>
+        <div className="space-y-3 pt-2 border-t border-neutral-200">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <label className="block">
+              <span className="block text-xs font-medium text-neutral-700 mb-1">
+                Status
+              </span>
+              <select
+                name="status"
+                defaultValue="inquiry"
+                className="w-full rounded border border-neutral-300 px-2 py-1.5 text-sm bg-white"
+              >
+                {BOOKING_STATUSES.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="flex items-center gap-2 pt-5">
+              <input type="checkbox" name="all_day" />
+              <span className="text-xs text-neutral-700">All day</span>
+            </label>
+
+            <label className="block">
+              <span className="block text-xs font-medium text-neutral-700 mb-1">
+                Start
+              </span>
+              <input
+                type="datetime-local"
+                name="start_at"
+                className="w-full rounded border border-neutral-300 px-2 py-1.5 text-sm"
+              />
+            </label>
+
+            <label className="block">
+              <span className="block text-xs font-medium text-neutral-700 mb-1">
+                End
+              </span>
+              <input
+                type="datetime-local"
+                name="end_at"
+                className="w-full rounded border border-neutral-300 px-2 py-1.5 text-sm"
+              />
+            </label>
+          </div>
 
           <label className="block">
             <span className="block text-xs font-medium text-neutral-700 mb-1">
-              Start
+              Location
             </span>
             <input
-              type="datetime-local"
-              name="start_at"
+              type="text"
+              name="location"
+              maxLength={500}
+              placeholder="Venue name, address, or both"
               className="w-full rounded border border-neutral-300 px-2 py-1.5 text-sm"
             />
           </label>
 
           <label className="block">
             <span className="block text-xs font-medium text-neutral-700 mb-1">
-              End
+              Pay
             </span>
             <input
-              type="datetime-local"
-              name="end_at"
+              type="text"
+              name="pay"
+              maxLength={200}
+              placeholder="$300, 300 + tips, TBD, split 50/50…"
               className="w-full rounded border border-neutral-300 px-2 py-1.5 text-sm"
             />
           </label>
 
-          <label className="flex items-center gap-2 pt-5">
-            <input type="checkbox" name="all_day" />
-            <span className="text-xs text-neutral-700">All day</span>
-          </label>
-
-          <label className="block sm:col-span-2">
+          <label className="block">
             <span className="block text-xs font-medium text-neutral-700 mb-1">
               Notes
             </span>
@@ -117,7 +145,7 @@ export function BookingForm() {
               name="notes"
               rows={2}
               maxLength={10000}
-              placeholder="Location, pay, contact, any context…"
+              placeholder="Contact person, equipment needed, context…"
               className="w-full rounded border border-neutral-300 px-2 py-1.5 text-sm"
             />
           </label>
