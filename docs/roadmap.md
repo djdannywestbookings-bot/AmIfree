@@ -1,6 +1,6 @@
 # AmIFree Scheduler - Roadmap and Phase Tracker
 
-Last updated: 2026-04-15
+Last updated: 2026-04-24 (Phase 22 shipped; Phase 23 positioning rewrite landing)
 
 ## Coordination rules
 
@@ -34,21 +34,24 @@ Last updated: 2026-04-15
 - [19] Phase - Data Model Evolution & Migration Strategy
 - [20] Phase - Reporting, Dashboards & Internal BI
 - [21] Phase - App Shell Audit & Build Rescue
-- [22] Phase - Canonical Beta Foundation
-- [23] Phase - UNRESOLVED GAP (no doc artifact found)
-- [24] Phase - UNRESOLVED GAP (no doc artifact found)
+- [22] Phase - Canonical Beta Foundation _(code shipped 2026-04-24; tag `phase-22-complete`)_
+- [23] Phase - Positioning Rewrite _(doc-only; landed 2026-04-24; see `docs/phases/23-positioning-rewrite.md`)_
+- [24] Phase - First Feature (TBD; scope pending owner direction)
 - [25] Phase - UNRESOLVED GAP (no doc artifact found)
-- [26] Phase - Multi-User and Tenant Boundary Foundation
+- [26] Phase - Multi-User and Tenant Boundary Foundation _(planning only)_
 
 ## Current phase status
 
-- [26] Phase - Multi-User and Tenant Boundary Foundation - complete
-- [27] Phase - Internal Admin, Repair, and Ops Console - active
+- [22] Phase - Canonical Beta Foundation - complete (code shipped)
+- [23] Phase - Positioning Rewrite - complete (this commit)
+- [24] Phase - First Feature - pending owner direction
+- [26] Phase - Multi-User and Tenant Boundary Foundation - planning complete; code pending
+- [27] Phase - Internal Admin, Repair, and Ops Console - planning only; not active
 
 ## Locked decisions to preserve
 
 - Booking is the only calendar-truth object.
-- Intake is Booking-only and DJ / Manager Lite only in MVP.
+- Intake is Booking-only and scoped to workspace role `owner` / `manager_lite` in MVP.
 - Request-linkage behavior stays exact.
 - Agenda and Coverage remain separate views and surfaces.
 - Occurrence capacity math stays: open_slots_count = max(slots_needed - filled_slots_count - active_request_count, 0)

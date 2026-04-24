@@ -24,8 +24,9 @@ export type Actor = {
  * decisions from this value.
  *
  * Phase 22 resolution is simple: every allowlisted owner is assigned
- * `dj_owner`. Later phases will replace this with a workspace_members
- * lookup keyed off the authenticated user id.
+ * `owner` (renamed from `dj_owner` in Phase 23 positioning rewrite).
+ * Later phases will replace this with a workspace_members lookup keyed
+ * off the authenticated user id.
  */
 export async function getCurrentActor(): Promise<Actor | null> {
   const supabase = await createClient();
@@ -41,6 +42,6 @@ export async function getCurrentActor(): Promise<Actor | null> {
   return {
     userId: user.id,
     email,
-    role: "dj_owner",
+    role: "owner",
   };
 }
