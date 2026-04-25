@@ -68,6 +68,7 @@ export const bookingRowSchema = z.object({
   // Stored as YYYY-MM-DD (date, not timestamp). Null until the booking
   // has a start_at the app has anchored.
   service_day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
+  venue_id: z.string().uuid().nullable(),
   location: z.string().nullable(),
   pay: z.string().nullable(),
   notes: z.string().nullable(),
@@ -88,6 +89,7 @@ export const bookingCreateInputSchema = z.object({
   start_at: z.string().datetime({ offset: true }).nullable().optional(),
   end_at: z.string().datetime({ offset: true }).nullable().optional(),
   all_day: z.boolean().default(false),
+  venue_id: z.string().uuid().nullable().optional(),
   location: z.string().max(500).nullable().optional(),
   pay: z.string().max(200).nullable().optional(),
   notes: z.string().max(10_000).nullable().optional(),
@@ -110,6 +112,7 @@ export const bookingUpdateInputSchema = z.object({
   start_at: z.string().datetime({ offset: true }).nullable().optional(),
   end_at: z.string().datetime({ offset: true }).nullable().optional(),
   all_day: z.boolean().optional(),
+  venue_id: z.string().uuid().nullable().optional(),
   location: z.string().max(500).nullable().optional(),
   pay: z.string().max(200).nullable().optional(),
   notes: z.string().max(10_000).nullable().optional(),

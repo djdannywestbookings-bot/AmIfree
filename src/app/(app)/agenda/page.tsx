@@ -1,5 +1,10 @@
-import { requireWorkspace, listBookings } from "@/server/services";
+import {
+  requireWorkspace,
+  listBookings,
+  listVenues,
+} from "@/server/services";
 import { BOOKING_STATUSES, type BookingRow } from "@/modules/bookings";
+import type { VenueRow } from "@/modules/venues";
 import { BookingForm } from "./_components/BookingForm";
 import {
   updateBookingStatusAction,
@@ -38,14 +43,28 @@ function formatWhen(b: BookingRow): string {
   return `${dateStr} · ${startTime} – ${endTime}`;
 }
 
+function venueLabel(b: BookingRow, venuesById: Map<string, VenueRow>): string | null {
+  if (b.venue_id) {
+    const v = venuesById.get(b.venue_id);
+    if (v) {
+      return v.address ? `${v.name} · ${v.address}` : v.name;
+    }
+  }
+  return b.location;
+}
+
 export default async function AgendaPage() {
   const workspace = await requireWorkspace();
-  const bookings = await listBookings(workspace);
+  const [bookings, venues] = await Promise.all([
+    listBookings(workspace),
+    listVenues(workspace),
+  ]);
+  const venuesById = new Map(venues.map((v) => [v.id, v] as const));
 
   return (
     <main className="max-w-screen-lg mx-auto p-4 sm:p-8 space-y-6">
       <div className="flex items-baseline justify-between gap-4 flex-wrap">
-        <h1 className="text-2xl font-semibold">Agenda</h1>
+        <h1 className="text-2xl font-semibold">Schedule</h1>
         <p className="text-xs text-neutral-500">
           <strong>{workspace.name}</strong> ·{" "}
           {workspace.service_day_mode === "nightlife"
@@ -54,106 +73,109 @@ export default async function AgendaPage() {
         </p>
       </div>
 
-      <BookingForm />
+      <BookingForm venues={venues} />
 
       {bookings.length === 0 ? (
         <div className="border border-dashed border-neutral-300 rounded-md p-8 text-center text-sm text-neutral-500">
-          No bookings yet. Add one above to get started.
+          No shifts yet. Create one above to get started.
         </div>
       ) : (
         <ul className="space-y-2">
-          {bookings.map((b) => (
-            <li
-              key={b.id}
-              className="border border-neutral-200 rounded-md p-4 bg-white flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
-            >
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-medium truncate">{b.title}</span>
-                  <span
-                    className={`inline-block text-xs px-2 py-0.5 rounded border ${
-                      STATUS_STYLES[b.status] ?? STATUS_STYLES.inquiry
-                    }`}
-                  >
-                    {b.status}
-                  </span>
+          {bookings.map((b) => {
+            const venue = venueLabel(b, venuesById);
+            return (
+              <li
+                key={b.id}
+                className="border border-neutral-200 rounded-md p-4 bg-white flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-medium truncate">{b.title}</span>
+                    <span
+                      className={`inline-block text-xs px-2 py-0.5 rounded border ${
+                        STATUS_STYLES[b.status] ?? STATUS_STYLES.inquiry
+                      }`}
+                    >
+                      {b.status}
+                    </span>
+                  </div>
+                  <div className="text-xs text-neutral-500 mt-1">
+                    {formatWhen(b)}
+                  </div>
+                  {(venue || b.pay || b.notes) && (
+                    <dl className="text-xs mt-2 space-y-1">
+                      {venue && (
+                        <div className="flex gap-2">
+                          <dt className="text-neutral-500 w-16 shrink-0">Venue</dt>
+                          <dd className="text-neutral-700 min-w-0 break-words">
+                            {venue}
+                          </dd>
+                        </div>
+                      )}
+                      {b.pay && (
+                        <div className="flex gap-2">
+                          <dt className="text-neutral-500 w-16 shrink-0">Pay</dt>
+                          <dd className="text-neutral-700 min-w-0 break-words">
+                            {b.pay}
+                          </dd>
+                        </div>
+                      )}
+                      {b.notes && (
+                        <div className="flex gap-2">
+                          <dt className="text-neutral-500 w-16 shrink-0">Notes</dt>
+                          <dd className="text-neutral-700 min-w-0 whitespace-pre-wrap break-words">
+                            {b.notes}
+                          </dd>
+                        </div>
+                      )}
+                    </dl>
+                  )}
                 </div>
-                <div className="text-xs text-neutral-500 mt-1">
-                  {formatWhen(b)}
-                </div>
-                {(b.location || b.pay || b.notes) && (
-                  <dl className="text-xs mt-2 space-y-1">
-                    {b.location && (
-                      <div className="flex gap-2">
-                        <dt className="text-neutral-500 w-16 shrink-0">Location</dt>
-                        <dd className="text-neutral-700 min-w-0 break-words">
-                          {b.location}
-                        </dd>
-                      </div>
-                    )}
-                    {b.pay && (
-                      <div className="flex gap-2">
-                        <dt className="text-neutral-500 w-16 shrink-0">Pay</dt>
-                        <dd className="text-neutral-700 min-w-0 break-words">
-                          {b.pay}
-                        </dd>
-                      </div>
-                    )}
-                    {b.notes && (
-                      <div className="flex gap-2">
-                        <dt className="text-neutral-500 w-16 shrink-0">Notes</dt>
-                        <dd className="text-neutral-700 min-w-0 whitespace-pre-wrap break-words">
-                          {b.notes}
-                        </dd>
-                      </div>
-                    )}
-                  </dl>
-                )}
-              </div>
 
-              <div className="flex items-center gap-2 shrink-0">
-                <form action={updateBookingStatusAction} className="flex items-center gap-2">
-                  <input type="hidden" name="id" value={b.id} />
-                  <select
-                    name="status"
-                    defaultValue={b.status}
-                    className="text-xs rounded border border-neutral-300 px-2 py-1 bg-white"
-                    aria-label="Change status"
-                  >
-                    {BOOKING_STATUSES.map((s) => (
-                      <option key={s} value={s}>
-                        {s}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    type="submit"
+                <div className="flex items-center gap-2 shrink-0">
+                  <form action={updateBookingStatusAction} className="flex items-center gap-2">
+                    <input type="hidden" name="id" value={b.id} />
+                    <select
+                      name="status"
+                      defaultValue={b.status}
+                      className="text-xs rounded border border-neutral-300 px-2 py-1 bg-white"
+                      aria-label="Change status"
+                    >
+                      {BOOKING_STATUSES.map((s) => (
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="submit"
+                      className="text-xs rounded border border-neutral-300 px-2 py-1 hover:bg-neutral-50"
+                    >
+                      Save
+                    </button>
+                  </form>
+
+                  <a
+                    href={`/agenda/${b.id}`}
                     className="text-xs rounded border border-neutral-300 px-2 py-1 hover:bg-neutral-50"
                   >
-                    Save
-                  </button>
-                </form>
+                    Edit
+                  </a>
 
-                <a
-                  href={`/agenda/${b.id}`}
-                  className="text-xs rounded border border-neutral-300 px-2 py-1 hover:bg-neutral-50"
-                >
-                  Edit
-                </a>
-
-                <form action={deleteBookingAction}>
-                  <input type="hidden" name="id" value={b.id} />
-                  <button
-                    type="submit"
-                    className="text-xs rounded border border-red-200 text-red-700 px-2 py-1 hover:bg-red-50"
-                    aria-label="Delete booking"
-                  >
-                    Delete
-                  </button>
-                </form>
-              </div>
-            </li>
-          ))}
+                  <form action={deleteBookingAction}>
+                    <input type="hidden" name="id" value={b.id} />
+                    <button
+                      type="submit"
+                      className="text-xs rounded border border-red-200 text-red-700 px-2 py-1 hover:bg-red-50"
+                      aria-label="Delete shift"
+                    >
+                      Delete
+                    </button>
+                  </form>
+                </div>
+              </li>
+            );
+          })}
         </ul>
       )}
     </main>

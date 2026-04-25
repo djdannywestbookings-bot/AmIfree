@@ -3,9 +3,11 @@
 import { useState, type FormEvent } from "react";
 import { updateBookingAction, deleteFromEditAction } from "../actions";
 import { BOOKING_STATUSES, type BookingRow } from "@/modules/bookings";
+import type { VenueRow } from "@/modules/venues";
 import { DatePicker } from "../../_components/DatePicker";
 import { TimeInput } from "../../_components/TimeInput";
 import { DurationInput } from "../../_components/DurationInput";
+import { VenueSelect } from "../../_components/VenueSelect";
 
 function splitIsoToDateAndTime(iso: string | null): { date: string; time: string } {
   if (!iso) return { date: "", time: "" };
@@ -46,11 +48,18 @@ function durationMinutesFromStartEnd(
   return String(Math.round((e - s) / 60_000));
 }
 
-export function EditBookingForm({ booking }: { booking: BookingRow }) {
+export function EditBookingForm({
+  booking,
+  venues,
+}: {
+  booking: BookingRow;
+  venues: VenueRow[];
+}) {
   const initialDateTime = splitIsoToDateAndTime(booking.start_at);
 
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [conflicts, setConflicts] = useState<{ hard: string[]; possible: string[] } | null>(null);
 
   const [title, setTitle] = useState(booking.title);
   const [status, setStatus] = useState(booking.status);
@@ -68,6 +77,7 @@ export function EditBookingForm({ booking }: { booking: BookingRow }) {
     event.preventDefault();
     setPending(true);
     setError(null);
+    setConflicts(null);
 
     const form = new FormData();
     form.set("id", booking.id);
@@ -91,6 +101,17 @@ export function EditBookingForm({ booking }: { booking: BookingRow }) {
       form.set("start_at", combineDateAndTime(date, "00:00") ?? "");
     }
 
+    // Pull venue fields from VenueSelect's hidden inputs (it manages
+    // its own state since the dropdown vs inline-create choice is its
+    // concern, not the parent form's).
+    const formEl = event.currentTarget;
+    const venueId = (formEl.elements.namedItem("venue_id") as HTMLInputElement | null)?.value ?? "";
+    const newVenueName = (formEl.elements.namedItem("new_venue_name") as HTMLInputElement | null)?.value ?? "";
+    const newVenueAddress = (formEl.elements.namedItem("new_venue_address") as HTMLInputElement | null)?.value ?? "";
+    if (venueId) form.set("venue_id", venueId);
+    if (newVenueName) form.set("new_venue_name", newVenueName);
+    if (newVenueAddress) form.set("new_venue_address", newVenueAddress);
+
     if (location) form.set("location", location);
     if (pay) form.set("pay", pay);
     if (notes) form.set("notes", notes);
@@ -99,6 +120,7 @@ export function EditBookingForm({ booking }: { booking: BookingRow }) {
     setPending(false);
     if (result && !result.ok) {
       setError(result.error);
+      if (result.conflicts) setConflicts(result.conflicts);
     }
     // Success path redirects via the server action.
   }
@@ -174,18 +196,26 @@ export function EditBookingForm({ booking }: { booking: BookingRow }) {
         </div>
       </div>
 
-      <label className="block">
+      <div>
         <span className="block text-xs font-medium text-neutral-700 mb-1">
-          Location
+          Venue
         </span>
+        <VenueSelect venues={venues} initialVenueId={booking.venue_id} />
+      </div>
+
+      <details open={Boolean(location)}>
+        <summary className="text-xs text-neutral-500 cursor-pointer hover:text-neutral-700">
+          + Free-form location (one-off / not on venue list)
+        </summary>
         <input
           type="text"
           value={location}
           onChange={(e) => setLocation(e.target.value)}
           maxLength={500}
-          className="w-full rounded border border-neutral-300 px-2 py-1.5 text-sm"
+          placeholder="Hotel ballroom downtown, client's house, etc."
+          className="mt-2 w-full rounded border border-neutral-300 px-2 py-1.5 text-sm"
         />
-      </label>
+      </details>
 
       <label className="block">
         <span className="block text-xs font-medium text-neutral-700 mb-1">
@@ -214,9 +244,16 @@ export function EditBookingForm({ booking }: { booking: BookingRow }) {
       </label>
 
       {error && (
-        <p className="text-xs text-red-600" role="alert">
-          {error}
-        </p>
+        <div className="text-xs rounded border border-red-200 bg-red-50 text-red-700 p-2 space-y-1" role="alert">
+          <div className="font-medium">{error}</div>
+          {conflicts && conflicts.hard.length > 0 && (
+            <ul className="list-disc list-inside">
+              {conflicts.hard.map((c, i) => (
+                <li key={i}>{c}</li>
+              ))}
+            </ul>
+          )}
+        </div>
       )}
 
       <div className="flex items-center justify-between gap-2 pt-2 border-t border-neutral-200">

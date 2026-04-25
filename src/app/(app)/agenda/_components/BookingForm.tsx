@@ -3,9 +3,11 @@
 import { useState, type FormEvent } from "react";
 import { createBookingAction } from "../actions";
 import { BOOKING_STATUSES } from "@/modules/bookings";
+import type { VenueRow } from "@/modules/venues";
 import { DatePicker } from "./DatePicker";
 import { TimeInput } from "./TimeInput";
 import { DurationInput } from "./DurationInput";
+import { VenueSelect } from "./VenueSelect";
 
 /**
  * Inline create-booking form (Phase 24D).
@@ -41,8 +43,10 @@ function combineDateAndTime(
   return d.toISOString();
 }
 
-export function BookingForm() {
+export function BookingForm({ venues }: { venues: VenueRow[] }) {
   const [error, setError] = useState<string | null>(null);
+  const [conflicts, setConflicts] = useState<{ hard: string[]; possible: string[] } | null>(null);
+  const [warnings, setWarnings] = useState<string[]>([]);
   const [pending, setPending] = useState(false);
   const [expanded, setExpanded] = useState(false);
 
@@ -61,12 +65,15 @@ export function BookingForm() {
     setStartTime("");
     setDurationMinutes("");
     setExpanded(false);
+    setConflicts(null);
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setPending(true);
     setError(null);
+    setConflicts(null);
+    setWarnings([]);
 
     // Build the outgoing FormData — the server action reads these
     // field names via getOrUndef().
@@ -102,11 +109,18 @@ export function BookingForm() {
     if (startIso) form.set("start_at", startIso);
     if (endIso) form.set("end_at", endIso);
 
-    // Structured free-form fields.
+    // Structured free-form fields + venue selection (VenueSelect
+    // renders its own hidden inputs we read from the live form).
     const formEl = event.currentTarget;
+    const venueId = (formEl.elements.namedItem("venue_id") as HTMLInputElement | null)?.value ?? "";
+    const newVenueName = (formEl.elements.namedItem("new_venue_name") as HTMLInputElement | null)?.value ?? "";
+    const newVenueAddress = (formEl.elements.namedItem("new_venue_address") as HTMLInputElement | null)?.value ?? "";
     const location = (formEl.elements.namedItem("location") as HTMLInputElement | null)?.value ?? "";
     const pay = (formEl.elements.namedItem("pay") as HTMLInputElement | null)?.value ?? "";
     const notes = (formEl.elements.namedItem("notes") as HTMLTextAreaElement | null)?.value ?? "";
+    if (venueId) form.set("venue_id", venueId);
+    if (newVenueName) form.set("new_venue_name", newVenueName);
+    if (newVenueAddress) form.set("new_venue_address", newVenueAddress);
     if (location) form.set("location", location);
     if (pay) form.set("pay", pay);
     if (notes) form.set("notes", notes);
@@ -116,9 +130,13 @@ export function BookingForm() {
 
     if (!result.ok) {
       setError(result.error);
+      if (result.conflicts) setConflicts(result.conflicts);
       return;
     }
 
+    if (result.warnings && result.warnings.length > 0) {
+      setWarnings(result.warnings);
+    }
     resetForm();
   }
 
@@ -130,7 +148,7 @@ export function BookingForm() {
       <div className="flex items-end gap-2">
         <label className="block flex-1">
           <span className="block text-xs font-medium text-neutral-700 mb-1">
-            New booking
+            Create shift
           </span>
           <input
             type="text"
@@ -138,7 +156,7 @@ export function BookingForm() {
             maxLength={200}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Smith Wedding, Saturday headliner, Client consult…"
+            placeholder="Saturday headliner, Smith Wedding, Client consult…"
             className="w-full rounded border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900"
             onFocus={() => setExpanded(true)}
           />
@@ -148,7 +166,7 @@ export function BookingForm() {
           disabled={pending}
           className="rounded bg-neutral-900 text-white py-2 px-4 text-sm disabled:opacity-50"
         >
-          {pending ? "Adding…" : "Add"}
+          {pending ? "Creating…" : "Create"}
         </button>
       </div>
 
@@ -215,18 +233,25 @@ export function BookingForm() {
             </div>
           </div>
 
-          <label className="block">
+          <div>
             <span className="block text-xs font-medium text-neutral-700 mb-1">
-              Location
+              Venue
             </span>
+            <VenueSelect venues={venues} />
+          </div>
+
+          <details>
+            <summary className="text-xs text-neutral-500 cursor-pointer hover:text-neutral-700">
+              + Free-form location (one-off / not on venue list)
+            </summary>
             <input
               type="text"
               name="location"
               maxLength={500}
-              placeholder="Venue name, address, or both"
-              className="w-full rounded border border-neutral-300 px-2 py-1.5 text-sm"
+              placeholder="Hotel ballroom downtown, client's house, etc."
+              className="mt-2 w-full rounded border border-neutral-300 px-2 py-1.5 text-sm"
             />
-          </label>
+          </details>
 
           <label className="block">
             <span className="block text-xs font-medium text-neutral-700 mb-1">
@@ -256,10 +281,28 @@ export function BookingForm() {
         </div>
       )}
 
+      {warnings.length > 0 && (
+        <div
+          className="text-xs rounded border border-amber-200 bg-amber-50 text-amber-800 p-2 space-y-1"
+          role="status"
+        >
+          {warnings.map((w, i) => (
+            <div key={i}>{w}</div>
+          ))}
+        </div>
+      )}
+
       {error && (
-        <p className="text-xs text-red-600" role="alert">
-          {error}
-        </p>
+        <div className="text-xs rounded border border-red-200 bg-red-50 text-red-700 p-2 space-y-1" role="alert">
+          <div className="font-medium">{error}</div>
+          {conflicts && conflicts.hard.length > 0 && (
+            <ul className="list-disc list-inside">
+              {conflicts.hard.map((c, i) => (
+                <li key={i}>{c}</li>
+              ))}
+            </ul>
+          )}
+        </div>
       )}
     </form>
   );

@@ -2,10 +2,50 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { requireWorkspace, createBooking, updateBooking, deleteBooking } from "@/server/services";
+import {
+  requireWorkspace,
+  createBooking,
+  updateBooking,
+  deleteBooking,
+  detectConflicts,
+  summarizeBooking,
+  createVenue,
+} from "@/server/services";
 import { BOOKING_STATUSES } from "@/modules/bookings";
 
-export type AgendaResult = { ok: true } | { ok: false; error: string };
+/**
+ * Resolve a venue selection from a form. Returns the venue_id to use
+ * on the booking, creating a new venue inline if the user picked
+ * "+ Add a new venue" and filled in the name field. Returns null if
+ * no venue was selected at all.
+ */
+async function resolveVenueIdFromForm(
+  workspace: { id: string },
+  venueId: string | undefined,
+  newVenueName: string | undefined,
+  newVenueAddress: string | undefined,
+): Promise<string | null> {
+  // Existing venue picked from the dropdown.
+  if (venueId && venueId.length > 0) {
+    return venueId;
+  }
+  // Inline create requested.
+  const name = (newVenueName ?? "").trim();
+  if (name.length > 0) {
+    const created = await createVenue(workspace, {
+      name,
+      address: newVenueAddress && newVenueAddress.trim().length > 0
+        ? newVenueAddress.trim()
+        : null,
+    });
+    return created.id;
+  }
+  return null;
+}
+
+export type AgendaResult =
+  | { ok: true; warnings?: string[] }
+  | { ok: false; error: string; conflicts?: { hard: string[]; possible: string[] } };
 
 // Form-input parser: coerces empty strings to nulls and combines the
 // browser's datetime-local format into proper ISO strings.
@@ -24,6 +64,9 @@ const createFormSchema = z.object({
     .string()
     .optional()
     .transform((v) => v === "on" || v === "true"),
+  venue_id: z.string().optional(),
+  new_venue_name: z.string().optional(),
+  new_venue_address: z.string().optional(),
   location: z
     .string()
     .optional()
@@ -55,6 +98,9 @@ export async function createBookingAction(
     start_at: getOrUndef("start_at"),
     end_at: getOrUndef("end_at"),
     all_day: getOrUndef("all_day"),
+    venue_id: getOrUndef("venue_id"),
+    new_venue_name: getOrUndef("new_venue_name"),
+    new_venue_address: getOrUndef("new_venue_address"),
     location: getOrUndef("location"),
     pay: getOrUndef("pay"),
     notes: getOrUndef("notes"),
@@ -78,13 +124,43 @@ export async function createBookingAction(
     return { ok: false, error: "End time must be after start time." };
   }
 
+  // Conflict pre-check. Hard conflicts block the save and return the
+  // list of conflicting bookings; possible conflicts proceed and are
+  // surfaced as warnings on the success result.
+  const conflicts = await detectConflicts(workspace, {
+    status: parsed.data.status,
+    start_at: parsed.data.start_at,
+    end_at: parsed.data.end_at,
+  });
+
+  if (conflicts.hard.length > 0) {
+    return {
+      ok: false,
+      error: `Hard conflict with ${conflicts.hard.length} existing booking${
+        conflicts.hard.length === 1 ? "" : "s"
+      }. Resolve before saving.`,
+      conflicts: {
+        hard: conflicts.hard.map(summarizeBooking),
+        possible: conflicts.possible.map(summarizeBooking),
+      },
+    };
+  }
+
   try {
+    const venueId = await resolveVenueIdFromForm(
+      workspace,
+      parsed.data.venue_id,
+      parsed.data.new_venue_name,
+      parsed.data.new_venue_address,
+    );
+
     await createBooking(workspace, {
       title: parsed.data.title,
       status: parsed.data.status,
       start_at: parsed.data.start_at,
       end_at: parsed.data.end_at,
       all_day: parsed.data.all_day ?? false,
+      venue_id: venueId,
       location: parsed.data.location,
       pay: parsed.data.pay,
       notes: parsed.data.notes,
@@ -95,6 +171,17 @@ export async function createBookingAction(
   }
 
   revalidatePath("/agenda");
+
+  if (conflicts.possible.length > 0) {
+    return {
+      ok: true,
+      warnings: [
+        `Possible conflict with: ${conflicts.possible
+          .map(summarizeBooking)
+          .join("; ")}`,
+      ],
+    };
+  }
   return { ok: true };
 }
 

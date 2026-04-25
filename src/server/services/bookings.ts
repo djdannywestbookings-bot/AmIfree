@@ -142,6 +142,7 @@ export async function createBooking(
       end_at: parsed.end_at ?? null,
       all_day: parsed.all_day ?? false,
       service_day: serviceDay,
+      venue_id: parsed.venue_id ?? null,
       location: parsed.location ?? null,
       pay: parsed.pay ?? null,
       notes: parsed.notes ?? null,

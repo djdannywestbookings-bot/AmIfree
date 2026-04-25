@@ -7,10 +7,39 @@ import {
   requireWorkspace,
   updateBooking,
   deleteBooking,
+  detectConflicts,
+  summarizeBooking,
+  createVenue,
 } from "@/server/services";
 import { BOOKING_STATUSES } from "@/modules/bookings";
 
-export type EditResult = { ok: true } | { ok: false; error: string };
+async function resolveVenueIdFromForm(
+  workspace: { id: string },
+  venueId: string | undefined,
+  newVenueName: string | undefined,
+  newVenueAddress: string | undefined,
+): Promise<string | null> {
+  if (venueId && venueId.length > 0) return venueId;
+  const name = (newVenueName ?? "").trim();
+  if (name.length > 0) {
+    const created = await createVenue(workspace, {
+      name,
+      address: newVenueAddress && newVenueAddress.trim().length > 0
+        ? newVenueAddress.trim()
+        : null,
+    });
+    return created.id;
+  }
+  return null;
+}
+
+export type EditResult =
+  | { ok: true }
+  | {
+      ok: false;
+      error: string;
+      conflicts?: { hard: string[]; possible: string[] };
+    };
 
 const editSchema = z.object({
   id: z.string().uuid(),
@@ -19,6 +48,9 @@ const editSchema = z.object({
   start_at: z.string().optional(),
   end_at: z.string().optional(),
   all_day: z.string().optional(),
+  venue_id: z.string().optional(),
+  new_venue_name: z.string().optional(),
+  new_venue_address: z.string().optional(),
   location: z.string().optional(),
   pay: z.string().optional(),
   notes: z.string().optional(),
@@ -37,6 +69,9 @@ export async function updateBookingAction(
     start_at: getOrUndef("start_at"),
     end_at: getOrUndef("end_at"),
     all_day: getOrUndef("all_day"),
+    venue_id: getOrUndef("venue_id"),
+    new_venue_name: getOrUndef("new_venue_name"),
+    new_venue_address: getOrUndef("new_venue_address"),
     location: getOrUndef("location"),
     pay: getOrUndef("pay"),
     notes: getOrUndef("notes"),
@@ -57,8 +92,39 @@ export async function updateBookingAction(
     return { ok: false, error: "End time must be after start time." };
   }
 
+  // Conflict pre-check, excluding the booking being edited from the
+  // overlap candidates (so editing a booking's time doesn't conflict
+  // with its own pre-edit row).
+  const conflicts = await detectConflicts(workspace, {
+    id: parsed.data.id,
+    status: parsed.data.status,
+    start_at: parsed.data.start_at || null,
+    end_at: parsed.data.end_at || null,
+  });
+
+  if (conflicts.hard.length > 0) {
+    return {
+      ok: false,
+      error: `Hard conflict with ${conflicts.hard.length} existing booking${
+        conflicts.hard.length === 1 ? "" : "s"
+      }. Resolve before saving.`,
+      conflicts: {
+        hard: conflicts.hard.map(summarizeBooking),
+        possible: conflicts.possible.map(summarizeBooking),
+      },
+    };
+  }
+
+  const venueId = await resolveVenueIdFromForm(
+    workspace,
+    parsed.data.venue_id,
+    parsed.data.new_venue_name,
+    parsed.data.new_venue_address,
+  );
+
   try {
     await updateBooking(workspace, parsed.data.id, {
+      venue_id: venueId,
       title: parsed.data.title,
       status: parsed.data.status,
       start_at: parsed.data.start_at || null,

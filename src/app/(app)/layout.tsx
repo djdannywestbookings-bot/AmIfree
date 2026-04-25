@@ -34,7 +34,7 @@ export default async function AppLayout({
           <span className="font-semibold">AmIFree</span>
           <div className="flex gap-3 sm:gap-4 flex-1">
             <Link href="/agenda" className="hover:text-neutral-600">
-              Agenda
+              Schedule
             </Link>
             <Link href="/coverage" className="hover:text-neutral-600">
               Coverage
