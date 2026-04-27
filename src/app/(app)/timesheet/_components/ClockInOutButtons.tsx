@@ -54,12 +54,12 @@ export function ClockInOutButtons({
     return (
       <form
         onSubmit={handleClockOut}
-        className="bg-white border border-amber-300 rounded-md p-4 flex items-center justify-between gap-3 flex-wrap"
+        className="card p-4 ring-1 ring-amber-300/70 flex items-center justify-between gap-3 flex-wrap"
       >
         <div className="text-sm">
           <span className="inline-block w-2 h-2 rounded-full bg-amber-500 animate-pulse mr-2 align-middle" />
           <span className="font-medium text-amber-800">On the clock</span>
-          <span className="ml-2 text-neutral-600">
+          <span className="ml-2 text-slate-600">
             since {startedAt}
           </span>
         </div>
@@ -72,7 +72,7 @@ export function ClockInOutButtons({
           <button
             type="submit"
             disabled={pending}
-            className="rounded bg-red-600 hover:bg-red-700 text-white px-4 py-2 text-sm font-medium disabled:opacity-50 transition-colors"
+            className="btn btn-md btn-danger"
           >
             {pending ? "Clocking out…" : "Clock out"}
           </button>
@@ -84,15 +84,15 @@ export function ClockInOutButtons({
   return (
     <form
       onSubmit={handleClockIn}
-      className="bg-white border border-neutral-200 rounded-md p-4 flex items-center justify-between gap-3 flex-wrap"
+      className="card p-4 flex items-center justify-between gap-3 flex-wrap"
     >
       <div className="flex items-center gap-3 flex-wrap">
-        <span className="text-sm text-neutral-600">Ready to clock in?</span>
+        <span className="text-sm text-slate-600">Ready to clock in?</span>
         {eligibleBookings.length > 0 && (
           <select
             value={bookingId}
             onChange={(e) => setBookingId(e.target.value)}
-            className="text-sm rounded border border-neutral-300 px-2 py-1.5 bg-white"
+            className="input input-sm w-auto max-w-xs"
           >
             <option value="">No specific shift</option>
             {eligibleBookings.map((b) => {
@@ -122,7 +122,7 @@ export function ClockInOutButtons({
         <button
           type="submit"
           disabled={pending}
-          className="rounded bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 text-sm font-medium disabled:opacity-50 transition-colors"
+          className="btn btn-md btn-primary"
         >
           {pending ? "Clocking in…" : "Clock in"}
         </button>

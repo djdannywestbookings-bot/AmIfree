@@ -1,6 +1,16 @@
 import type { Metadata, Viewport } from "next";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import { PWARegister } from "./_components/PWARegister";
+
+// Inter — used app-wide. Loaded via next/font for self-hosted CDN
+// performance and zero CLS. tabular-nums + the cv* feature settings
+// (set in globals.css) give us the polished numerical look.
+const inter = Inter({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-inter",
+});
 
 export const metadata: Metadata = {
   title: "AmIFree",
@@ -39,8 +49,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body>
+    <html lang="en" className={inter.variable}>
+      <body className="font-sans antialiased bg-slate-50 text-slate-900">
         {children}
         <PWARegister />
       </body>
