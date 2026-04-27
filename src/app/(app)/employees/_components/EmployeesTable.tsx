@@ -28,10 +28,14 @@ const STATUS_PILL: Record<string, string> = {
   disabled: "bg-neutral-100 text-neutral-500 border-neutral-200",
 };
 
+type PositionChip = { id: string; name: string; color: string | null };
+
 export function EmployeesTable({
   employees,
+  positionsByEmployee = {},
 }: {
   employees: WorkspaceMemberRow[];
+  positionsByEmployee?: Record<string, PositionChip[]>;
 }) {
   const [query, setQuery] = useState("");
 
@@ -102,7 +106,11 @@ export function EmployeesTable({
         ) : (
           <ul className="divide-y divide-neutral-200">
             {filtered.map((e) => (
-              <EmployeeRow key={e.id} employee={e} />
+              <EmployeeRow
+                key={e.id}
+                employee={e}
+                positions={positionsByEmployee[e.id] ?? []}
+              />
             ))}
           </ul>
         )}
@@ -119,7 +127,13 @@ export function EmployeesTable({
   );
 }
 
-function EmployeeRow({ employee: e }: { employee: WorkspaceMemberRow }) {
+function EmployeeRow({
+  employee: e,
+  positions = [],
+}: {
+  employee: WorkspaceMemberRow;
+  positions?: PositionChip[];
+}) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
@@ -138,12 +152,32 @@ function EmployeeRow({ employee: e }: { employee: WorkspaceMemberRow }) {
 
   return (
     <li className="grid grid-cols-[2fr_2.5fr_1.3fr_1fr_1fr_60px] gap-3 items-center px-4 py-3 text-sm hover:bg-neutral-50">
-      <Link
-        href={`/employees/${e.id}`}
-        className="font-medium text-neutral-800 hover:text-indigo-600 truncate"
-      >
-        {e.name ?? <span className="text-neutral-400">(no name)</span>}
-      </Link>
+      <div className="min-w-0">
+        <Link
+          href={`/employees/${e.id}`}
+          className="font-medium text-neutral-800 hover:text-indigo-600 truncate block"
+        >
+          {e.name ?? <span className="text-neutral-400">(no name)</span>}
+        </Link>
+        {positions.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-1">
+            {positions.map((p) => (
+              <span
+                key={p.id}
+                className="inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] text-neutral-700 bg-neutral-50 border-neutral-200"
+                title={p.name}
+              >
+                <span
+                  className="w-1.5 h-1.5 rounded-full"
+                  style={{ backgroundColor: p.color ?? "#94a3b8" }}
+                  aria-hidden="true"
+                />
+                {p.name}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
       <span className="text-neutral-600 truncate">
         {e.email ?? <span className="text-neutral-400">—</span>}
       </span>

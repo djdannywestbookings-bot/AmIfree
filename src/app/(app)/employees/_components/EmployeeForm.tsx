@@ -3,8 +3,10 @@
 import { useState, type FormEvent } from "react";
 import { createEmployeeAction, updateEmployeeAction } from "../actions";
 import type { WorkspaceMemberRow } from "@/modules/auth";
+import type { PositionRow } from "@/modules/positions";
 import { APP_ROLES } from "@/server/policies/roles";
 import { MEMBER_STATUSES } from "@/modules/auth";
+import { PositionsMultiSelect } from "./PositionsMultiSelect";
 
 const ROLE_LABEL: Record<string, string> = {
   owner: "Owner — full workspace authority",
@@ -25,7 +27,15 @@ const STATUS_LABEL: Record<string, string> = {
  * edit so we don't break the email-based invite attachment if the
  * row is still pending.
  */
-export function EmployeeForm({ existing }: { existing?: WorkspaceMemberRow }) {
+export function EmployeeForm({
+  existing,
+  allPositions = [],
+  selectedPositionIds = [],
+}: {
+  existing?: WorkspaceMemberRow;
+  allPositions?: PositionRow[];
+  selectedPositionIds?: string[];
+}) {
   const isEdit = Boolean(existing);
   const [email, setEmail] = useState(existing?.email ?? "");
   const [name, setName] = useState(existing?.name ?? "");
@@ -190,6 +200,17 @@ export function EmployeeForm({ existing }: { existing?: WorkspaceMemberRow }) {
           </select>
         </label>
       )}
+
+      <div>
+        <span className="block text-xs font-medium text-neutral-700 mb-1">
+          Positions
+        </span>
+        <PositionsMultiSelect
+          allPositions={allPositions}
+          initialSelectedIds={selectedPositionIds}
+          name="position_ids"
+        />
+      </div>
 
       {error && (
         <p className="text-xs text-red-600" role="alert">

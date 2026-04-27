@@ -9,6 +9,7 @@ import {
   updateEmployee,
   deleteEmployee,
   getCurrentMemberRole,
+  setEmployeePositions,
 } from "@/server/services";
 import { APP_ROLES } from "@/server/policies/roles";
 import { MEMBER_STATUSES } from "@/modules/auth";
@@ -94,17 +95,31 @@ export async function createEmployeeAction(
     };
   }
 
+  let createdId: string | null = null;
   try {
-    await createEmployee(workspace, {
+    const created = await createEmployee(workspace, {
       email: parsed.data.email,
       name: parsed.data.name,
       phone: parsed.data.phone && parsed.data.phone.length > 0 ? parsed.data.phone : null,
       role: parsed.data.role,
       default_pay_rate_cents: parsed.data.default_pay_rate_cents,
     });
+    createdId = created.id;
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     return { ok: false, error: message };
+  }
+
+  // Phase 39 — assign positions to the new row.
+  const positionIds = formData.getAll("position_ids").map(String);
+  if (createdId && positionIds.length > 0) {
+    try {
+      await setEmployeePositions(createdId, positionIds);
+    } catch (err) {
+      // Non-fatal: the employee exists, the position assignment failed.
+      // User can fix it from the edit page.
+      console.error("setEmployeePositions failed", err);
+    }
   }
 
   revalidatePath("/employees");
@@ -149,6 +164,14 @@ export async function updateEmployeeAction(
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     return { ok: false, error: message };
+  }
+
+  // Phase 39 — sync positions for this employee. Empty list = clear all.
+  const positionIds = formData.getAll("position_ids").map(String);
+  try {
+    await setEmployeePositions(parsed.data.id, positionIds);
+  } catch (err) {
+    console.error("setEmployeePositions failed", err);
   }
 
   revalidatePath("/employees");

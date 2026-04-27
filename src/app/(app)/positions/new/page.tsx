@@ -1,37 +1,32 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import {
-  requireWorkspace,
-  getCurrentMemberRole,
-  listPositions,
-} from "@/server/services";
-import { EmployeeForm } from "../_components/EmployeeForm";
+import { requireWorkspace, getCurrentMemberRole } from "@/server/services";
+import { PositionForm } from "../_components/PositionForm";
 
-export default async function NewEmployeePage() {
+export default async function NewPositionPage() {
   const workspace = await requireWorkspace();
   const role = await getCurrentMemberRole(workspace);
   if (role !== "owner") {
     redirect("/calendar");
   }
 
-  const positions = await listPositions(workspace);
-
   return (
     <main className="max-w-screen-md mx-auto p-4 sm:p-8 space-y-4">
       <div className="flex items-baseline justify-between gap-4 flex-wrap">
-        <h1 className="text-2xl font-semibold">Add employee</h1>
+        <h1 className="text-2xl font-semibold">Add position</h1>
         <Link
-          href="/employees"
+          href="/positions"
           className="text-xs text-neutral-500 underline hover:text-neutral-700"
         >
-          ← back to employees
+          ← back to positions
         </Link>
       </div>
       <p className="text-sm text-neutral-600 max-w-2xl">
-        Invite a team member by email. They&apos;ll show up as Pending in
-        your roster until they sign in for the first time.
+        Create job titles your employees can hold. They show up as colored
+        chips on each employee&apos;s row and (later) filter the assignee
+        dropdown so you can pick the right person for the right gig.
       </p>
-      <EmployeeForm allPositions={positions} />
+      <PositionForm />
     </main>
   );
 }

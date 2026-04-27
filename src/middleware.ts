@@ -18,6 +18,7 @@ const APP_ROUTE_PREFIXES = [
   "/intake",
   "/my-calendar",
   "/onboarding",
+  "/positions",
   "/settings",
   "/venues",
 ];
