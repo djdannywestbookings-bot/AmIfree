@@ -2,6 +2,8 @@ export {
   createWorkspace,
   getCurrentWorkspace,
   requireWorkspace,
+  getWorkspaceByCalendarToken,
+  rotateCalendarToken,
 } from "./workspaces";
 export {
   listBookings,

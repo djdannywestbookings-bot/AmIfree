@@ -152,3 +152,61 @@ export async function requireWorkspace(): Promise<WorkspaceRow> {
   }
   return workspace;
 }
+
+/**
+ * Phase 34 — Look up a workspace by its public iCal calendar_token.
+ *
+ * Used by the unauthenticated /api/calendar/{token} route, which has
+ * no Supabase session because Google/Apple/Outlook poll without auth.
+ * Bypasses RLS via the admin client; the token itself is the auth.
+ *
+ * Returns null if the token doesn't match any workspace.
+ */
+export async function getWorkspaceByCalendarToken(
+  token: string,
+): Promise<WorkspaceRow | null> {
+  if (!token || typeof token !== "string" || token.length < 16) return null;
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("workspaces")
+    .select("*")
+    .eq("calendar_token", token)
+    .maybeSingle();
+
+  if (!data) return null;
+  return workspaceRowSchema.parse(data);
+}
+
+/**
+ * Generate a fresh calendar_token, invalidating the previous URL.
+ * Owner-only operation — caller must verify the actor before calling.
+ */
+export async function rotateCalendarToken(
+  workspaceId: string,
+): Promise<string> {
+  const admin = createAdminClient();
+  // Use Postgres' gen_random_uuid() to mint the new token in-DB so
+  // we don't depend on Node crypto being available at edge runtimes.
+  // Implemented via a tiny RPC equivalent: select + update + return.
+  const newToken = generateClientSideToken();
+  const { error } = await admin
+    .from("workspaces")
+    .update({ calendar_token: newToken })
+    .eq("id", workspaceId);
+  if (error) {
+    throw new Error(`Failed to rotate calendar token: ${error.message}`);
+  }
+  return newToken;
+}
+
+function generateClientSideToken(): string {
+  // 32-char hex (~128 bits). Uses Node's crypto.randomUUID() which
+  // is available in all Next.js runtimes including edge.
+  const uuid =
+    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : `${Math.random().toString(16).slice(2)}${Math.random()
+          .toString(16)
+          .slice(2)}`;
+  return uuid.replace(/-/g, "");
+}

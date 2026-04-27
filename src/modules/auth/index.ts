@@ -23,6 +23,9 @@ export const workspaceRowSchema = z.object({
   // 0..12 allowed per migration constraint.
   nightlife_cutoff_hour: z.number().int().min(0).max(12),
   owner_user_id: z.string().uuid(),
+  // Phase 34 — bearer token for the public iCal feed. Hex string,
+  // present after migration 0006. Treat as secret.
+  calendar_token: z.string().min(16),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
 });
