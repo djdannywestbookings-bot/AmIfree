@@ -394,16 +394,13 @@ export function BulkIntakeForm() {
       <form onSubmit={handleExtract} className="space-y-3">
         <label className="block">
           <span className="block text-sm font-medium text-neutral-700 mb-1">
-            Paste a table or list (one booking per row)
+            Paste a message, list, or table
           </span>
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
             rows={10}
             maxLength={50_000}
-            placeholder={
-              "04/28/2026\tTuesday\tBucks\tBucks\t10:00 PM-2:00 AM\t$300\tRecurring Tuesday\tBooked\n05/02/2026\tSaturday\tCinco event\tUnknown\t10:00 PM start\tUnknown\tAdam TXR contact\tBooked"
-            }
             className="w-full rounded border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900 font-mono"
           />
         </label>
