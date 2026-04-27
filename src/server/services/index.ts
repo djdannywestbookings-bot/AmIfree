@@ -24,4 +24,5 @@ export {
   getVenueById,
   createVenue,
   updateVenue,
+  deleteVenue,
 } from "./venues";

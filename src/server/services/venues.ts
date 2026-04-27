@@ -101,3 +101,24 @@ export async function updateVenue(
 
   return venueRowSchema.parse(data);
 }
+
+/**
+ * Delete a venue. Bookings linked to it have venue_id set to null
+ * (via the FK's ON DELETE SET NULL in migration 0005), so the
+ * historical booking rows survive without dangling references.
+ */
+export async function deleteVenue(
+  workspace: Pick<WorkspaceRow, "id">,
+  id: string,
+): Promise<void> {
+  const supabase = await createServerClient();
+  const { error } = await supabase
+    .from("venues")
+    .delete()
+    .eq("workspace_id", workspace.id)
+    .eq("id", id);
+
+  if (error) {
+    throw new Error(`Failed to delete venue: ${error.message}`);
+  }
+}
