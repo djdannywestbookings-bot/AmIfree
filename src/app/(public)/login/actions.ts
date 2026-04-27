@@ -3,7 +3,25 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { allowedEmails } from "@/lib/config/env.server";
+import { loginAttachPendingInvites } from "@/server/services/employees";
+
+/**
+ * Phase 38 — bypass the static APP_ALLOWED_EMAILS allowlist when
+ * the email has a pending workspace_members invite. Used so invited
+ * employees can sign in without an env-var update.
+ */
+async function hasPendingInvite(email: string): Promise<boolean> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("workspace_members")
+    .select("id")
+    .eq("status", "pending")
+    .ilike("email", email)
+    .limit(1);
+  return Boolean(data && data.length > 0);
+}
 
 const emailSchema = z
   .string()
@@ -34,8 +52,11 @@ export async function sendOtp(formData: FormData): Promise<ActionResult> {
   }
   const email = parsed.data;
 
-  // Pretend-success for non-allowlisted emails so the allowlist is not leaked.
-  if (!allowedEmails.includes(email)) {
+  // Owner allowlist OR pending invite — anyone else gets pretend-success
+  // so the allowlist isn't enumerable.
+  const isOwner = allowedEmails.includes(email);
+  const isInvited = !isOwner && (await hasPendingInvite(email));
+  if (!isOwner && !isInvited) {
     return { ok: true, email };
   }
 
@@ -63,7 +84,7 @@ export async function verifyOtp(formData: FormData): Promise<ActionResult> {
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.verifyOtp({
+  const { data: verifyData, error } = await supabase.auth.verifyOtp({
     email: parsedEmail.data,
     token: parsedToken.data,
     type: "email",
@@ -71,6 +92,17 @@ export async function verifyOtp(formData: FormData): Promise<ActionResult> {
 
   if (error) {
     return { ok: false, error: "That code was invalid or expired." };
+  }
+
+  // Phase 38 — attach any pending workspace_members invites that
+  // matched this email. Non-fatal on error (the user is signed in
+  // either way; an admin can fix the row manually).
+  if (verifyData?.user?.id) {
+    try {
+      await loginAttachPendingInvites(verifyData.user.id, parsedEmail.data);
+    } catch (err) {
+      console.error("loginAttachPendingInvites failed", err);
+    }
   }
 
   // redirect() throws a framework-handled error; the client never sees a return.

@@ -49,6 +49,9 @@ export default async function AppLayout({
             <Link href="/venues" className="hover:text-indigo-600 transition-colors">
               Venues
             </Link>
+            <Link href="/employees" className="hover:text-indigo-600 transition-colors">
+              Employees
+            </Link>
             <Link href="/intake" className="hover:text-indigo-600 transition-colors">
               Intake
             </Link>

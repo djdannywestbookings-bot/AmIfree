@@ -14,6 +14,7 @@ const APP_ROUTE_PREFIXES = [
   "/agenda",
   "/calendar",
   "/coverage",
+  "/employees",
   "/intake",
   "/my-calendar",
   "/onboarding",

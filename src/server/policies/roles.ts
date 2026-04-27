@@ -20,12 +20,17 @@ import "server-only";
  * an authoritative server-side policy input; never trust a role claim
  * carried by the client.
  */
-export const APP_ROLES = ["owner", "manager_lite"] as const;
+/**
+ * Phase 38 added "employee" — owners can now invite team members
+ * who can view / be assigned shifts but can't manage workspace
+ * settings.
+ */
+export const APP_ROLES = ["owner", "manager_lite", "employee"] as const;
 
 export type AppRole = (typeof APP_ROLES)[number];
 
-export const ACTIVE_ROLES: readonly AppRole[] = ["owner"];
-export const RESERVED_ROLES: readonly AppRole[] = ["manager_lite"];
+export const ACTIVE_ROLES: readonly AppRole[] = ["owner", "manager_lite", "employee"];
+export const RESERVED_ROLES: readonly AppRole[] = [];
 
 export function isActiveRole(role: AppRole): boolean {
   return ACTIVE_ROLES.includes(role);

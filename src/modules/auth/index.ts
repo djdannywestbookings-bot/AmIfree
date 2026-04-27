@@ -35,11 +35,22 @@ export const workspaceRowSchema = z.object({
 
 export type WorkspaceRow = z.infer<typeof workspaceRowSchema>;
 
+export const MEMBER_STATUSES = ["pending", "joined", "disabled"] as const;
+export type MemberStatus = (typeof MEMBER_STATUSES)[number];
+
 export const workspaceMemberRowSchema = z.object({
   id: z.string().uuid(),
   workspace_id: z.string().uuid(),
-  user_id: z.string().uuid(),
+  // Phase 38 — pending invites have email but no user_id yet.
+  user_id: z.string().uuid().nullable(),
   role: z.enum(APP_ROLES),
+  // Phase 38 profile + lifecycle fields
+  email: z.string().email().nullable().default(null),
+  name: z.string().nullable().default(null),
+  phone: z.string().nullable().default(null),
+  status: z.enum(MEMBER_STATUSES).default("joined"),
+  invited_at: z.string().datetime({ offset: true }).nullable().default(null),
+  joined_at: z.string().datetime({ offset: true }).nullable().default(null),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
 });

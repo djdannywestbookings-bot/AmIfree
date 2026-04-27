@@ -29,3 +29,12 @@ export {
   deleteVenue,
   listVenueBookingCounts,
 } from "./venues";
+export {
+  listEmployees,
+  getEmployeeById,
+  createEmployee,
+  updateEmployee,
+  deleteEmployee,
+  loginAttachPendingInvites,
+  getCurrentMemberRole,
+} from "./employees";

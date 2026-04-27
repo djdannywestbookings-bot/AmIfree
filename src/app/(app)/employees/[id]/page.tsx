@@ -1,0 +1,39 @@
+import Link from "next/link";
+import { notFound, redirect } from "next/navigation";
+import {
+  requireWorkspace,
+  getEmployeeById,
+  getCurrentMemberRole,
+} from "@/server/services";
+import { EmployeeForm } from "../_components/EmployeeForm";
+
+export default async function EditEmployeePage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const workspace = await requireWorkspace();
+  const role = await getCurrentMemberRole(workspace);
+  if (role !== "owner") {
+    redirect("/calendar");
+  }
+
+  const { id } = await params;
+  const employee = await getEmployeeById(workspace, id);
+  if (!employee) notFound();
+
+  return (
+    <main className="max-w-screen-md mx-auto p-4 sm:p-8 space-y-4">
+      <div className="flex items-baseline justify-between gap-4 flex-wrap">
+        <h1 className="text-2xl font-semibold">Edit employee</h1>
+        <Link
+          href="/employees"
+          className="text-xs text-neutral-500 underline hover:text-neutral-700"
+        >
+          ← back to employees
+        </Link>
+      </div>
+      <EmployeeForm existing={employee} />
+    </main>
+  );
+}
