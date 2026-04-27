@@ -164,7 +164,7 @@ export function BookingForm({ venues }: { venues: VenueRow[] }) {
         <button
           type="submit"
           disabled={pending}
-          className="rounded bg-neutral-900 text-white py-2 px-4 text-sm disabled:opacity-50"
+          className="rounded bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 text-sm disabled:opacity-50 transition-colors"
         >
           {pending ? "Creating…" : "Create"}
         </button>

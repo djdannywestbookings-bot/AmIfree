@@ -210,7 +210,7 @@ export function DatePicker({
                   className={[
                     "text-xs rounded py-1.5 hover:bg-neutral-100",
                     isSelected
-                      ? "bg-neutral-900 text-white hover:bg-neutral-800"
+                      ? "bg-indigo-600 text-white hover:bg-indigo-700"
                       : "",
                     !isSelected && isToday
                       ? "border border-neutral-400"

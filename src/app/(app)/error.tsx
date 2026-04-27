@@ -28,7 +28,7 @@ export default function AppError({
       <button
         type="button"
         onClick={reset}
-        className="mt-4 rounded bg-neutral-900 text-white py-2 px-4 text-sm"
+        className="mt-4 rounded bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 text-sm transition-colors"
       >
         Retry
       </button>

@@ -67,7 +67,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={pending}
-              className="w-full rounded bg-neutral-900 text-white py-2 disabled:opacity-50"
+              className="w-full rounded bg-indigo-600 hover:bg-indigo-700 text-white py-2 disabled:opacity-50 transition-colors"
             >
               {pending ? "Sending…" : "Send sign-in code"}
             </button>
@@ -99,7 +99,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={pending}
-              className="w-full rounded bg-neutral-900 text-white py-2 disabled:opacity-50"
+              className="w-full rounded bg-indigo-600 hover:bg-indigo-700 text-white py-2 disabled:opacity-50 transition-colors"
             >
               {pending ? "Verifying…" : "Verify and sign in"}
             </button>

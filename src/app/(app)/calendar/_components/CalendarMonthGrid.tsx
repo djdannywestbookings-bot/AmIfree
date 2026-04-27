@@ -208,7 +208,7 @@ export function CalendarMonthGrid({
                 className={[
                   "text-xs",
                   cell.isToday
-                    ? "inline-flex items-center justify-center w-5 h-5 rounded-full bg-neutral-900 text-white"
+                    ? "inline-flex items-center justify-center w-5 h-5 rounded-full bg-indigo-600 text-white"
                     : "text-neutral-500",
                 ].join(" ")}
               >

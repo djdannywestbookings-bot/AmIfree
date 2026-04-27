@@ -487,7 +487,7 @@ export function BulkIntakeForm() {
             disabled={
               pending || (text.trim().length === 0 && images.length === 0)
             }
-            className="rounded bg-neutral-900 text-white py-2 px-4 text-sm disabled:opacity-50 shrink-0"
+            className="rounded bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 text-sm disabled:opacity-50 shrink-0 transition-colors"
           >
             {pending ? "Extracting…" : "Extract"}
           </button>
@@ -717,7 +717,7 @@ export function BulkIntakeForm() {
           type="button"
           onClick={handleSaveAll}
           disabled={pending || drafts.length === 0}
-          className="rounded bg-neutral-900 text-white py-2 px-4 text-sm disabled:opacity-50"
+          className="rounded bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 text-sm disabled:opacity-50 transition-colors"
         >
           {pending
             ? "Saving…"

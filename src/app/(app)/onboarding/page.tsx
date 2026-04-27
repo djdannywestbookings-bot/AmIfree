@@ -131,7 +131,7 @@ export default function OnboardingPage() {
           <button
             type="submit"
             disabled={pending}
-            className="w-full rounded bg-neutral-900 text-white py-2 disabled:opacity-50"
+            className="w-full rounded bg-indigo-600 hover:bg-indigo-700 text-white py-2 disabled:opacity-50 transition-colors"
           >
             {pending ? "Creating workspace…" : "Create workspace and continue"}
           </button>
