@@ -58,7 +58,7 @@ const EMPTY: ExtractionResult = {
 
 export async function extractBookingFromText(
   text: string,
-  workspace: Pick<WorkspaceRow, "service_day_mode" | "nightlife_cutoff_hour">,
+  workspace: Pick<WorkspaceRow, "service_day_mode" | "nightlife_cutoff_hour" | "timezone">,
 ): Promise<ExtractionResult> {
   const trimmed = text.trim();
   if (trimmed.length === 0) {
@@ -221,7 +221,7 @@ function findDuration(text: string): number | null {
 
 export function extractViaHeuristic(
   text: string,
-  _workspace: Pick<WorkspaceRow, "service_day_mode" | "nightlife_cutoff_hour">,
+  _workspace: Pick<WorkspaceRow, "service_day_mode" | "nightlife_cutoff_hour" | "timezone">,
 ): ExtractionResult {
   const warnings: string[] = [];
   const date = findDate(text);
@@ -354,13 +354,15 @@ const EXTRACTION_JSON_SCHEMA = {
 
 async function extractViaOpenAI(
   text: string,
-  workspace: Pick<WorkspaceRow, "service_day_mode" | "nightlife_cutoff_hour">,
+  workspace: Pick<WorkspaceRow, "service_day_mode" | "nightlife_cutoff_hour" | "timezone">,
 ): Promise<ExtractionResult> {
   const client = getOpenAIClient();
 
   const today = new Date().toISOString().slice(0, 10);
+  const tz = workspace.timezone || "America/Chicago";
   const context = [
     `Today is ${today}.`,
+    `Workspace timezone: ${tz}. CRITICAL: when the input mentions a time without a timezone (e.g. "10pm", "22:00", "6 PM"), interpret it as ${tz} local time. Emit the resulting ISO 8601 with the correct UTC offset for ${tz} on the booking date (account for daylight saving). Do NOT default ambiguous times to UTC ("Z" suffix) or to your own assumed timezone.`,
     `Workspace mode: ${workspace.service_day_mode}${
       workspace.service_day_mode === "nightlife"
         ? ` (day rolls over at ${workspace.nightlife_cutoff_hour}:00am local)`
@@ -495,7 +497,7 @@ const BULK_JSON_SCHEMA = {
  */
 export async function extractMultipleBookingsFromText(
   text: string,
-  workspace: Pick<WorkspaceRow, "service_day_mode" | "nightlife_cutoff_hour">,
+  workspace: Pick<WorkspaceRow, "service_day_mode" | "nightlife_cutoff_hour" | "timezone">,
   images: string[] = [],
 ): Promise<BulkExtractionResult> {
   const trimmed = text.trim();
@@ -540,7 +542,7 @@ export async function extractMultipleBookingsFromText(
 
 function extractMultipleViaHeuristic(
   text: string,
-  workspace: Pick<WorkspaceRow, "service_day_mode" | "nightlife_cutoff_hour">,
+  workspace: Pick<WorkspaceRow, "service_day_mode" | "nightlife_cutoff_hour" | "timezone">,
 ): BulkExtractionResult {
   // Split on blank lines first; if no blank lines, fall back to single
   // newlines (typical when each row of a paste is one line).
@@ -572,14 +574,16 @@ type UserContentPart =
 
 async function extractMultipleViaOpenAI(
   text: string,
-  workspace: Pick<WorkspaceRow, "service_day_mode" | "nightlife_cutoff_hour">,
+  workspace: Pick<WorkspaceRow, "service_day_mode" | "nightlife_cutoff_hour" | "timezone">,
   images: string[] = [],
 ): Promise<BulkExtractionResult> {
   const client = getOpenAIClient();
 
   const today = new Date().toISOString().slice(0, 10);
+  const tz = workspace.timezone || "America/Chicago";
   const context = [
     `Today is ${today}.`,
+    `Workspace timezone: ${tz}. CRITICAL: when the input mentions a time without a timezone (e.g. "10pm", "22:00", "6 PM"), interpret it as ${tz} local time. Emit the resulting ISO 8601 with the correct UTC offset for ${tz} on the booking date (account for daylight saving). Do NOT default ambiguous times to UTC ("Z" suffix) or to your own assumed timezone.`,
     `Workspace mode: ${workspace.service_day_mode}${
       workspace.service_day_mode === "nightlife"
         ? ` (day rolls over at ${workspace.nightlife_cutoff_hour}:00am local)`

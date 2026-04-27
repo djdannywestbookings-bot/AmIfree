@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { requireWorkspace } from "@/server/services";
 import { signOut } from "./actions";
 import { CalendarSyncSection } from "./_components/CalendarSyncSection";
+import { TimezoneSection } from "./_components/TimezoneSection";
 
 export default async function SettingsPage() {
   const workspace = await requireWorkspace();
@@ -34,6 +35,8 @@ export default async function SettingsPage() {
           </div>
         </dl>
       </section>
+
+      <TimezoneSection initialTimezone={workspace.timezone} />
 
       <CalendarSyncSection
         initialToken={workspace.calendar_token}

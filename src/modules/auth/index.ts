@@ -26,6 +26,9 @@ export const workspaceRowSchema = z.object({
   // Phase 34 — bearer token for the public iCal feed. Hex string,
   // present after migration 0006. Treat as secret.
   calendar_token: z.string().min(16),
+  // Phase 36.5 — workspace IANA timezone. Anchors AI-extracted times,
+  // and used for display when the viewer's browser TZ differs.
+  timezone: z.string().min(1).default("America/Chicago"),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
 });
