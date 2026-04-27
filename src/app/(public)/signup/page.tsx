@@ -1,85 +1,50 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import Link from "next/link";
-import { sendOtp, verifyOtp } from "./actions";
-import { signInWithApple, signInWithGoogle } from "./oauth-actions";
-import { signInWithPassword } from "./password-actions";
-
-type Stage = "primary" | "magicCode";
+import { signInWithApple, signInWithGoogle } from "../login/oauth-actions";
+import { signUpWithPassword } from "./actions";
 
 /**
- * /login — refined auth surface with three sign-in paths.
+ * /signup — create-an-account surface.
  *
- *  1. Apple / Google OAuth (top, primary)
- *  2. Email + password (the new default email path)
- *  3. Email magic link / OTP (fallback under "Email me a code instead")
- *
- * "Stay signed in for 90 days" defaults to checked — this is the whole
- * point of adding password auth for this audience. Long-lived sessions
- * are the win, and we don't second-guess the user with a friction
- * checkbox they have to remember to tick.
+ * Mirrors /login layout: dark product panel left, auth card right.
+ * Apple/Google buttons at the top, divider, then email + password +
+ * confirm with a strength meter. Minimum 8 characters, no symbol
+ * complexity rules.
  */
-export default function LoginPage() {
-  const [stage, setStage] = useState<Stage>("primary");
+export default function SignupPage() {
   const [pending, setPending] = useState(false);
   const [oauthPending, setOauthPending] = useState<"google" | "apple" | null>(
     null,
   );
   const [error, setError] = useState<string | null>(null);
-
-  // Magic-code (OTP) state — only used in the fallback flow.
-  const [otpEmail, setOtpEmail] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [done, setDone] = useState(false);
+  const [successEmail, setSuccessEmail] = useState("");
 
-  useEffect(() => {
-    // Surface ?error=... from /auth/callback.
-    const params = new URLSearchParams(window.location.search);
-    const e = params.get("error");
-    if (e) setError(e);
-  }, []);
-
-  // Email + password sign-in.
-  async function handlePasswordSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setPending(true);
     setError(null);
 
     const form = new FormData(event.currentTarget);
-    const result = await signInWithPassword(form);
+    const result = await signUpWithPassword(form);
     setPending(false);
-    if (result && !result.ok) setError(result.error);
-    // On success the action redirects; we never reach here.
-  }
 
-  // Magic-link fallback — request the OTP.
-  async function handleMagicRequest(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setPending(true);
-    setError(null);
-
-    const form = new FormData(event.currentTarget);
-    const result = await sendOtp(form);
-    setPending(false);
-    if (result.ok) {
-      setOtpEmail(result.email);
-      setStage("magicCode");
+    if (result?.ok) {
+      // If Supabase's email-confirmation flow is enabled, the action
+      // returned ok without redirecting. Show a "check your email"
+      // confirmation state here. (If confirmation is disabled, the
+      // action redirected to /calendar and we never reach this code.)
+      const submittedEmail = String(form.get("email") ?? "");
+      setSuccessEmail(submittedEmail);
+      setDone(true);
     } else {
-      setError(result.error);
+      setError(result?.error ?? "Could not create account. Try again.");
     }
-  }
-
-  // Magic-link fallback — verify the OTP.
-  async function handleMagicVerify(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setPending(true);
-    setError(null);
-
-    const form = new FormData(event.currentTarget);
-    form.set("email", otpEmail);
-    const result = await verifyOtp(form);
-    setPending(false);
-    if (result && !result.ok) setError(result.error);
   }
 
   async function handleOAuth(provider: "google" | "apple") {
@@ -97,7 +62,7 @@ export default function LoginPage() {
 
   return (
     <main className="min-h-dvh grid md:grid-cols-2 bg-slate-950">
-      {/* LEFT — product panel. Slim header on mobile (decorative only). */}
+      {/* LEFT — product panel. Hidden on mobile. */}
       <aside className="relative hidden md:flex flex-col justify-between p-10 lg:p-14 overflow-hidden bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900">
         <div
           aria-hidden
@@ -120,14 +85,13 @@ export default function LoginPage() {
 
         <div className="relative max-w-md">
           <h2 className="text-3xl lg:text-4xl font-semibold tracking-tight text-white leading-tight">
-            Paste a client text.
+            One paste away from a
             <br />
-            <span className="text-slate-400">Get a clean booking.</span>
+            <span className="text-slate-400">calendar that stays current.</span>
           </h2>
           <p className="mt-5 text-slate-400 text-sm leading-relaxed">
-            AmIFree pulls the gig out of any message and warns you before
-            you double-book the date. Built for DJs, photographers, MCs,
-            and the rest of us booking by text.
+            AmIFree pulls the gig out of any client message and warns you
+            before you double-book. Free forever for solo bookers.
           </p>
         </div>
 
@@ -143,7 +107,6 @@ export default function LoginPage() {
       {/* RIGHT — auth card. */}
       <section className="flex items-center justify-center p-6 sm:p-10 bg-gradient-to-br from-indigo-50 via-slate-50 to-teal-50 md:bg-slate-50 md:bg-none">
         <div className="w-full max-w-sm animate-fade-in">
-          {/* Mobile-only wordmark */}
           <div className="flex md:hidden items-center justify-center mb-6">
             <Link
               href="/"
@@ -157,20 +120,15 @@ export default function LoginPage() {
 
           <div className="card p-6 sm:p-7">
             <h1 className="text-xl font-semibold text-slate-900 mb-1">
-              {stage === "primary" ? "Sign in" : "Check your email"}
+              {done ? "Check your email" : "Create your account"}
             </h1>
             <p className="text-sm text-slate-500 mb-5">
-              {stage === "primary"
-                ? "Apple, Google, or email — your call."
-                : (
-                    <>
-                      Code sent to{" "}
-                      <strong className="text-slate-700">{otpEmail}</strong>
-                    </>
-                  )}
+              {done
+                ? <>We sent a confirmation link to <strong className="text-slate-700">{successEmail}</strong>. Click it to finish setting up.</>
+                : "30 seconds. No credit card. No password rules."}
             </p>
 
-            {stage === "primary" ? (
+            {!done && (
               <>
                 {/* OAuth buttons */}
                 <div className="space-y-2.5">
@@ -198,15 +156,13 @@ export default function LoginPage() {
                   </button>
                 </div>
 
-                {/* Divider */}
                 <div className="my-5 flex items-center gap-3 text-[11px] uppercase tracking-wider text-slate-400">
                   <span className="flex-1 h-px bg-slate-200" />
-                  or use email
+                  or sign up with email
                   <span className="flex-1 h-px bg-slate-200" />
                 </div>
 
-                {/* Email + password */}
-                <form onSubmit={handlePasswordSubmit} className="space-y-3">
+                <form onSubmit={handleSubmit} className="space-y-3">
                   <label className="block">
                     <span className="block text-sm font-medium text-slate-700 mb-1.5">
                       Email
@@ -230,8 +186,11 @@ export default function LoginPage() {
                         type={showPassword ? "text" : "password"}
                         name="password"
                         required
-                        autoComplete="current-password"
-                        placeholder="••••••••"
+                        minLength={8}
+                        autoComplete="new-password"
+                        placeholder="8 characters minimum"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
                         className="input pr-10"
                       />
                       <button
@@ -243,128 +202,42 @@ export default function LoginPage() {
                         {showPassword ? <EyeOffIcon /> : <EyeIcon />}
                       </button>
                     </div>
+                    <PasswordStrength password={password} />
                   </label>
-                  <label className="flex items-center gap-2 select-none cursor-pointer">
-                    <input
-                      type="checkbox"
-                      name="stay_signed_in"
-                      defaultChecked
-                      className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                    />
-                    <span className="text-sm text-slate-600">
-                      Stay signed in for 90 days
+                  <label className="block">
+                    <span className="block text-sm font-medium text-slate-700 mb-1.5">
+                      Confirm password
                     </span>
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      name="confirm"
+                      required
+                      minLength={8}
+                      autoComplete="new-password"
+                      placeholder="Type it again"
+                      value={confirm}
+                      onChange={(e) => setConfirm(e.target.value)}
+                      className={`input ${confirm && confirm !== password ? "border-red-400 focus:ring-red-500/25 focus:border-red-500" : ""}`}
+                    />
+                    {confirm && confirm !== password && (
+                      <p className="mt-1 text-xs text-red-600">
+                        Passwords don&rsquo;t match.
+                      </p>
+                    )}
                   </label>
                   <button
                     type="submit"
-                    disabled={pending || oauthPending !== null}
+                    disabled={
+                      pending ||
+                      oauthPending !== null ||
+                      password.length < 8 ||
+                      password !== confirm
+                    }
                     className="btn btn-lg btn-primary w-full"
                   >
-                    {pending ? "Signing in…" : "Sign in"}
+                    {pending ? "Creating account…" : "Create account"}
                   </button>
-                  <div className="flex items-center justify-between text-xs pt-1">
-                    <Link
-                      href="/forgot-password"
-                      className="text-slate-500 hover:text-indigo-600 transition-colors"
-                    >
-                      Forgot password?
-                    </Link>
-                    <button
-                      type="button"
-                      onClick={() => setStage("magicCode")}
-                      className="text-slate-500 hover:text-indigo-600 transition-colors"
-                    >
-                      Email me a code instead
-                    </button>
-                  </div>
                 </form>
-
-                {/* In-card magic-link form swap — when "Email me a code"
-                 *  pressed and we're still on stage=primary briefly. We
-                 *  toggle stage on submit instead. The existing OTP UI
-                 *  takes over once stage flips to "magicCode" + a code
-                 *  has been sent. To request a code, render a small
-                 *  inline form here when needed: we use a side-state
-                 *  approach so the "Email me a code instead" button just
-                 *  collapses the password form and shows a request form.
-                 */}
-              </>
-            ) : (
-              /* MAGIC-CODE stage. If we have an otpEmail, we're verifying;
-               * otherwise we're requesting one. */
-              <>
-                {otpEmail === "" ? (
-                  <form onSubmit={handleMagicRequest} className="space-y-3">
-                    <p className="text-sm text-slate-600 mb-2">
-                      We&rsquo;ll send a one-time code to your inbox.
-                    </p>
-                    <label className="block">
-                      <span className="block text-sm font-medium text-slate-700 mb-1.5">
-                        Email
-                      </span>
-                      <input
-                        type="email"
-                        name="email"
-                        required
-                        autoComplete="email"
-                        placeholder="you@example.com"
-                        className="input"
-                      />
-                    </label>
-                    <button
-                      type="submit"
-                      disabled={pending}
-                      className="btn btn-lg btn-primary w-full"
-                    >
-                      {pending ? "Sending…" : "Send sign-in code"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setStage("primary")}
-                      className="text-xs text-slate-500 hover:text-slate-700 transition-colors"
-                    >
-                      ← Back to password sign-in
-                    </button>
-                  </form>
-                ) : (
-                  <form onSubmit={handleMagicVerify} className="space-y-3">
-                    <label className="block">
-                      <span className="block text-sm font-medium text-slate-700 mb-1.5">
-                        Verification code
-                      </span>
-                      <input
-                        type="text"
-                        name="token"
-                        required
-                        autoFocus
-                        inputMode="numeric"
-                        autoComplete="one-time-code"
-                        pattern="[0-9]{6,10}"
-                        maxLength={10}
-                        placeholder="123456"
-                        className="input font-mono tracking-[0.3em] text-center text-base"
-                      />
-                    </label>
-                    <button
-                      type="submit"
-                      disabled={pending}
-                      className="btn btn-lg btn-primary w-full"
-                    >
-                      {pending ? "Verifying…" : "Verify and sign in"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setStage("primary");
-                        setOtpEmail("");
-                        setError(null);
-                      }}
-                      className="text-xs text-slate-500 hover:text-slate-700 transition-colors"
-                    >
-                      ← Back to sign in
-                    </button>
-                  </form>
-                )}
               </>
             )}
 
@@ -380,12 +253,12 @@ export default function LoginPage() {
 
           <div className="text-center text-xs text-slate-500 mt-5 leading-relaxed space-y-1">
             <p>
-              New here?{" "}
+              Already have an account?{" "}
               <Link
-                href="/signup"
+                href="/login"
                 className="text-indigo-600 hover:text-indigo-700 underline-offset-2 hover:underline font-medium"
               >
-                Create an account
+                Sign in
               </Link>
             </p>
             <p className="text-slate-400">We never share your email.</p>
@@ -393,6 +266,53 @@ export default function LoginPage() {
         </div>
       </section>
     </main>
+  );
+}
+
+/* -------------------------------------------------------------------------- *
+ * PasswordStrength — bar + label below the password field
+ * -------------------------------------------------------------------------- */
+
+function PasswordStrength({ password }: { password: string }) {
+  if (!password) return null;
+
+  // Simple scoring: length, character class variety. Result: 0-3.
+  let score = 0;
+  if (password.length >= 8) score += 1;
+  if (password.length >= 12) score += 1;
+  const hasLetter = /[a-zA-Z]/.test(password);
+  const hasNumber = /\d/.test(password);
+  const hasSymbol = /[^a-zA-Z\d]/.test(password);
+  const variety = [hasLetter, hasNumber, hasSymbol].filter(Boolean).length;
+  if (variety >= 2) score += 1;
+  // Cap the meaningful score at 3.
+
+  const label =
+    password.length < 8 ? "Too short" : score === 1 ? "Weak" : score === 2 ? "Medium" : "Strong";
+  const color =
+    password.length < 8
+      ? "bg-red-500"
+      : score === 1
+      ? "bg-amber-500"
+      : score === 2
+      ? "bg-yellow-500"
+      : "bg-teal-500";
+  const fillPct =
+    password.length < 8 ? 33 : score === 1 ? 33 : score === 2 ? 66 : 100;
+
+  return (
+    <div className="mt-1.5">
+      <div className="h-1 rounded-full bg-slate-200 overflow-hidden">
+        <div
+          className={`h-full ${color} transition-all duration-200`}
+          style={{ width: `${fillPct}%` }}
+        />
+      </div>
+      <p className="mt-1 text-[11px] text-slate-500">
+        {label}
+        {password.length < 8 && ` — ${8 - password.length} more`}
+      </p>
+    </div>
   );
 }
 

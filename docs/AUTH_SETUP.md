@@ -1,12 +1,15 @@
-# Auth setup — Apple, Google, and long-lived sessions
+# Auth setup — Apple, Google, password, and long-lived sessions
 
-This is the dashboard work needed to flip the OAuth buttons from
+This is the dashboard work needed to flip the auth buttons from
 "renders fine, errors on click" to "actually signs the user in." The
 code is already in place:
 
-- `src/app/(public)/login/page.tsx` — UI with Apple + Google buttons
+- `src/app/(public)/login/page.tsx` — UI with Apple + Google + email/password
 - `src/app/(public)/login/oauth-actions.ts` — calls
   `supabase.auth.signInWithOAuth` and redirects to the provider
+- `src/app/(public)/login/password-actions.ts` — email + password sign-in
+- `src/app/(public)/signup/` — create-an-account flow
+- `src/app/(public)/forgot-password/` and `src/app/(public)/reset-password/` — recovery flow
 - `src/app/auth/callback/route.ts` — receives the OAuth code, exchanges
   it for a session, enforces the owner allowlist + pending-invite check
   (same guard the email OTP path uses)
@@ -180,6 +183,68 @@ Supabase dashboard → **Authentication → Providers → Apple**:
 
 ---
 
+## 3.5. Email + password auth
+
+Same Supabase project, separate provider toggle. Both can coexist with
+OAuth and magic-link.
+
+### 3.5a. Enable the Email provider
+
+Supabase dashboard → **Authentication → Providers → Email**:
+
+- **Enable Email provider**: ON (it's likely already on for magic-link)
+- **Enable email signup**: ON
+- **Confirm email**: your call. Two options —
+  - **OFF (recommended for beta)**: signups complete immediately and the
+    user lands on `/calendar`. Faster funnel, fine for an allow-listed
+    audience. The signup action falls through directly to redirect.
+  - **ON**: signups send a confirmation email. The user has to click it
+    before they can sign in. The signup page detects this case and
+    shows a "check your email" state.
+- **Secure email change**: ON
+- **Secure password change**: ON
+- Save.
+
+### 3.5b. Password requirements
+
+Supabase dashboard → **Authentication → Policies → Password**:
+
+- **Minimum length**: 8
+- All complexity toggles (uppercase / lowercase / number / symbol):
+  **leave OFF**. The app's own validation (8+ chars) is the single
+  source of truth — extra rules just frustrate users.
+
+### 3.5c. Password reset email template
+
+Supabase dashboard → **Authentication → Email Templates → Reset
+Password**:
+
+- **Subject**: `Reset your AmIFree password`
+- **Body** (HTML):
+
+```html
+<p>Hi,</p>
+<p>Click the link below to set a new password for your AmIFree account.
+The link expires in 1 hour.</p>
+<p><a href="{{ .ConfirmationURL }}">Set a new password</a></p>
+<p>If you didn't request this, ignore the email — your password stays
+unchanged.</p>
+<p>— AmIFree</p>
+```
+
+The `{{ .ConfirmationURL }}` variable is the Supabase recovery URL
+that lands on `/auth/callback?code=...&next=/reset-password`. Our
+callback route exchanges the code, signs the user in temporarily, and
+redirects to `/reset-password` where they choose a new password.
+
+### 3.5d. Rate limits
+
+Supabase dashboard → **Authentication → Rate Limits** — leave defaults
+during beta. If you start seeing brute-force attempts, lower the
+"sign-ins" limit per IP.
+
+---
+
 ## 4. Long-lived sessions
 
 Supabase dashboard → **Authentication → Sessions**:
@@ -188,16 +253,24 @@ Supabase dashboard → **Authentication → Sessions**:
   refreshed automatically)
 - **Refresh token reuse interval**: 10 (seconds, default)
 - **Inactivity timeout**: leave blank (no inactivity timeout)
-- **Session max duration**: **2592000** (30 days)
+- **Session max duration**: **7776000** (90 days — bumped from the
+  previous 30-day setting to match the "Stay signed in for 90 days"
+  checkbox on /login)
 
 The `@supabase/ssr` middleware in `src/lib/supabase/middleware.ts`
 already calls `supabase.auth.getUser()` on every request, which silently
 refreshes the access token using the refresh token. So a session that
 sits unused for 25 days still wakes up cleanly.
 
-> No "Remember me" checkbox is shown by design. The brief is right that
-> users shouldn't have to opt in to staying logged in — we just stay
-> logged in.
+> The "Stay signed in for 90 days" checkbox on `/login` is checked by
+> default. When the user unchecks it (e.g., on a shared computer), we
+> write a `staySignedIn=0` cookie. Today the Supabase session length
+> is global (90 days for everyone). To enforce a shorter 7-day window
+> when the cookie is `0`, add a check in
+> `src/lib/supabase/middleware.ts` that signs the user out if
+> `staySignedIn=0` and the session was issued more than 7 days ago.
+> Mark this as a follow-up; the UI is wired and the preference is
+> recorded — we just don't enforce the short-session ceiling yet.
 
 ---
 
