@@ -52,9 +52,16 @@ const config: Config = {
           "0%": { opacity: "0", transform: "translateY(2px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
         },
+        // Used by HeroDemo on the marketing homepage to sweep a soft
+        // gradient across the message panel during the "parsing" phase.
+        sweep: {
+          "0%":   { transform: "translateX(0)" },
+          "100%": { transform: "translateX(450%)" },
+        },
       },
       animation: {
         "fade-in": "fade-in 180ms ease-out both",
+        sweep: "sweep 900ms ease-out forwards",
       },
     },
   },
