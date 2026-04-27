@@ -1,5 +1,3 @@
-import "server-only";
-
 /**
  * Application-level roles for AmIFree.
  *
