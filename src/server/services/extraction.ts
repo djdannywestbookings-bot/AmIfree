@@ -369,7 +369,7 @@ async function extractViaOpenAI(
   ].join(" ");
 
   const completion = await client.chat.completions.create({
-    model: "gpt-4o-mini",
+    model: "gpt-4.1-mini",
     messages: [
       { role: "system", content: EXTRACTION_SYSTEM_PROMPT },
       { role: "system", content: context },
@@ -389,4 +389,205 @@ async function extractViaOpenAI(
 
   const parsed = JSON.parse(raw) as Omit<ExtractionResult, "source">;
   return { ...parsed, source: "openai" };
+}
+
+// ---------------------------------------------------------------------
+// Bulk extraction — pull MANY bookings out of a single paste
+// ---------------------------------------------------------------------
+
+/**
+ * Result of a bulk extraction: an array of per-row extractions plus
+ * top-level warnings (e.g., "couldn't determine column order").
+ *
+ * Phase 31 — supports pasting tabular data (TSV from spreadsheet) or
+ * a list of multiple bookings in free text.
+ */
+export type BulkExtractionResult = {
+  source: "openai" | "heuristic";
+  bookings: ExtractionResult[];
+  warnings: string[];
+};
+
+const BULK_SYSTEM_PROMPT = `You extract MULTIPLE bookings from a paste of tabular or list-style data for a scheduling app called AmIFree.
+
+The input may be:
+- Tab-separated rows from a spreadsheet (with or without a header row)
+- A bulleted/numbered list of bookings
+- Multiple bookings separated by blank lines
+- Any mix of the above
+
+Return a JSON object with an array "bookings". Each booking matches the same schema as single extraction:
+- title: short, descriptive. Prefer the booking name or venue.
+- status: inquiry | hold | requested | assigned | booked | completed | cancelled. If the input has a Status column with a value like "Booked" or "Inquiry" or "Hold", use that (lowercase). Default to "inquiry" if unclear.
+- start_at / end_at: ISO 8601 with offset. For time spans like "10:00 PM-2:00 AM", end is the next calendar day if it crosses midnight. For "Time not listed" or "Unknown", leave null.
+- all_day: true only if explicitly all-day.
+- location: venue name + address if present, "Unknown" → null.
+- pay: as written ($300, $3,500 quoted, etc.). "Unknown" → null.
+- notes: any context that doesn't fit other fields — recurring patterns, contact info, special requests, invoice numbers.
+- confidence: 0..1, how sure you are.
+- warnings: per-row issues.
+
+Skip header rows. Skip blank rows. Be conservative — null is better than wrong.`;
+
+const BULK_JSON_SCHEMA = {
+  name: "bulk_booking_extraction",
+  strict: true,
+  schema: {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      warnings: { type: "array", items: { type: "string" } },
+      bookings: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            title: { type: ["string", "null"] },
+            status: {
+              type: ["string", "null"],
+              enum: [
+                "inquiry",
+                "hold",
+                "requested",
+                "assigned",
+                "booked",
+                "completed",
+                "cancelled",
+                null,
+              ],
+            },
+            start_at: { type: ["string", "null"] },
+            end_at: { type: ["string", "null"] },
+            all_day: { type: "boolean" },
+            location: { type: ["string", "null"] },
+            pay: { type: ["string", "null"] },
+            notes: { type: ["string", "null"] },
+            confidence: { type: "number" },
+            warnings: { type: "array", items: { type: "string" } },
+          },
+          required: [
+            "title",
+            "status",
+            "start_at",
+            "end_at",
+            "all_day",
+            "location",
+            "pay",
+            "notes",
+            "confidence",
+            "warnings",
+          ],
+        },
+      },
+    },
+    required: ["warnings", "bookings"],
+  },
+} as const;
+
+export async function extractMultipleBookingsFromText(
+  text: string,
+  workspace: Pick<WorkspaceRow, "service_day_mode" | "nightlife_cutoff_hour">,
+): Promise<BulkExtractionResult> {
+  const trimmed = text.trim();
+  if (trimmed.length === 0) {
+    return {
+      source: "heuristic",
+      bookings: [],
+      warnings: ["Input was empty."],
+    };
+  }
+
+  if (!serverEnv.OPENAI_API_KEY) {
+    // Heuristic fallback — split on blank lines or newlines, run single
+    // extractor on each chunk. Lower quality but keeps the feature
+    // usable when the API key is missing.
+    return extractMultipleViaHeuristic(trimmed, workspace);
+  }
+
+  try {
+    return await extractMultipleViaOpenAI(trimmed, workspace);
+  } catch (err) {
+    const heuristic = extractMultipleViaHeuristic(trimmed, workspace);
+    const msg = err instanceof Error ? err.message : "Unknown error";
+    return {
+      ...heuristic,
+      warnings: [
+        `OpenAI bulk extraction failed (${msg}). Showing heuristic result.`,
+        ...heuristic.warnings,
+      ],
+    };
+  }
+}
+
+function extractMultipleViaHeuristic(
+  text: string,
+  workspace: Pick<WorkspaceRow, "service_day_mode" | "nightlife_cutoff_hour">,
+): BulkExtractionResult {
+  // Split on blank lines first; if no blank lines, fall back to single
+  // newlines (typical when each row of a paste is one line).
+  const blocks = text.includes("\n\n")
+    ? text.split(/\n\s*\n/)
+    : text.split(/\n/);
+  const cleaned = blocks.map((b) => b.trim()).filter((b) => b.length > 0);
+
+  const bookings = cleaned.map((block) =>
+    extractViaHeuristic(block, workspace),
+  );
+
+  return {
+    source: "heuristic",
+    bookings,
+    warnings:
+      bookings.length === 0
+        ? ["Could not split the input into rows."]
+        : [],
+  };
+}
+
+async function extractMultipleViaOpenAI(
+  text: string,
+  workspace: Pick<WorkspaceRow, "service_day_mode" | "nightlife_cutoff_hour">,
+): Promise<BulkExtractionResult> {
+  const client = getOpenAIClient();
+
+  const today = new Date().toISOString().slice(0, 10);
+  const context = [
+    `Today is ${today}.`,
+    `Workspace mode: ${workspace.service_day_mode}${
+      workspace.service_day_mode === "nightlife"
+        ? ` (day rolls over at ${workspace.nightlife_cutoff_hour}:00am local)`
+        : ""
+    }.`,
+  ].join(" ");
+
+  const completion = await client.chat.completions.create({
+    model: "gpt-4o-mini",
+    messages: [
+      { role: "system", content: BULK_SYSTEM_PROMPT },
+      { role: "system", content: context },
+      { role: "user", content: text },
+    ],
+    response_format: {
+      type: "json_schema",
+      json_schema: BULK_JSON_SCHEMA,
+    },
+    temperature: 0,
+  });
+
+  const raw = completion.choices[0]?.message?.content;
+  if (!raw) {
+    throw new Error("OpenAI returned an empty bulk response");
+  }
+
+  const parsed = JSON.parse(raw) as {
+    warnings: string[];
+    bookings: Omit<ExtractionResult, "source">[];
+  };
+
+  return {
+    source: "openai",
+    warnings: parsed.warnings ?? [],
+    bookings: parsed.bookings.map((b) => ({ ...b, source: "openai" as const })),
+  };
 }
