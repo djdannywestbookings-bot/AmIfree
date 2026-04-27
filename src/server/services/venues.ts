@@ -64,6 +64,9 @@ export async function createVenue(
       name: parsed.name,
       address: parsed.address ?? null,
       color: parsed.color ?? null,
+      contact_name: parsed.contact_name ?? null,
+      contact_phone: parsed.contact_phone ?? null,
+      notes: parsed.notes ?? null,
     })
     .select("*")
     .single();

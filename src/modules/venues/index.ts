@@ -3,10 +3,10 @@ import { z } from "zod";
 /**
  * Venue domain types for AmIFree.
  *
- * Phase 28 introduces venues as a structured first-class concept.
- * Mirrors the public.venues table from migration 0005. Bookings link
- * to venues via bookings.venue_id; one-off bookings can still use the
- * legacy bookings.location text field.
+ * Phase 28 introduced venues with name + address + color.
+ * Phase 37 added contact_name + contact_phone + notes (per migration
+ * 0008). The map preview on the edit page reads address only — no
+ * lat/lng yet, since Google's embed URL accepts the raw address.
  */
 
 export const venueRowSchema = z.object({
@@ -19,6 +19,10 @@ export const venueRowSchema = z.object({
     .string()
     .regex(/^#[0-9A-Fa-f]{6}$/, "Color must be a 7-char hex like #3b82f6")
     .nullable(),
+  // Phase 37 contact + notes
+  contact_name: z.string().nullable().default(null),
+  contact_phone: z.string().nullable().default(null),
+  notes: z.string().nullable().default(null),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
 });
@@ -33,6 +37,9 @@ export const venueCreateInputSchema = z.object({
     .regex(/^#[0-9A-Fa-f]{6}$/, "Color must be a 7-char hex like #3b82f6")
     .nullable()
     .optional(),
+  contact_name: z.string().trim().max(200).nullable().optional(),
+  contact_phone: z.string().trim().max(60).nullable().optional(),
+  notes: z.string().max(5000).nullable().optional(),
 });
 
 export type VenueCreateInput = z.infer<typeof venueCreateInputSchema>;
@@ -45,6 +52,9 @@ export const venueUpdateInputSchema = z.object({
     .regex(/^#[0-9A-Fa-f]{6}$/)
     .nullable()
     .optional(),
+  contact_name: z.string().trim().max(200).nullable().optional(),
+  contact_phone: z.string().trim().max(60).nullable().optional(),
+  notes: z.string().max(5000).nullable().optional(),
 });
 
 export type VenueUpdateInput = z.infer<typeof venueUpdateInputSchema>;

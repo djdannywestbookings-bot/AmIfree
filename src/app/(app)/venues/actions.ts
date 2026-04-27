@@ -18,6 +18,9 @@ const createSchema = z.object({
   name: z.string().trim().min(1, "Venue name is required").max(200),
   address: z.string().max(500).optional(),
   color: z.string().regex(colorRegex).optional(),
+  contact_name: z.string().trim().max(200).optional(),
+  contact_phone: z.string().trim().max(60).optional(),
+  notes: z.string().max(5000).optional(),
 });
 
 const updateSchema = z.object({
@@ -25,6 +28,9 @@ const updateSchema = z.object({
   name: z.string().trim().min(1, "Venue name is required").max(200),
   address: z.string().max(500).optional(),
   color: z.string().regex(colorRegex).optional(),
+  contact_name: z.string().trim().max(200).optional(),
+  contact_phone: z.string().trim().max(60).optional(),
+  notes: z.string().max(5000).optional(),
 });
 
 const deleteSchema = z.object({ id: z.string().uuid() });
@@ -43,6 +49,9 @@ export async function createVenueAction(
     name: getOrUndef(formData, "name"),
     address: getOrUndef(formData, "address"),
     color: getOrUndef(formData, "_venue_color"),
+    contact_name: getOrUndef(formData, "contact_name"),
+    contact_phone: getOrUndef(formData, "contact_phone"),
+    notes: getOrUndef(formData, "notes"),
   });
 
   if (!parsed.success) {
@@ -57,6 +66,9 @@ export async function createVenueAction(
       name: parsed.data.name,
       address: parsed.data.address && parsed.data.address.length > 0 ? parsed.data.address : null,
       color: parsed.data.color ?? null,
+      contact_name: parsed.data.contact_name && parsed.data.contact_name.length > 0 ? parsed.data.contact_name : null,
+      contact_phone: parsed.data.contact_phone && parsed.data.contact_phone.length > 0 ? parsed.data.contact_phone : null,
+      notes: parsed.data.notes && parsed.data.notes.length > 0 ? parsed.data.notes : null,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
@@ -80,6 +92,9 @@ export async function updateVenueAction(
     name: getOrUndef(formData, "name"),
     address: getOrUndef(formData, "address"),
     color: getOrUndef(formData, "_venue_color"),
+    contact_name: getOrUndef(formData, "contact_name"),
+    contact_phone: getOrUndef(formData, "contact_phone"),
+    notes: getOrUndef(formData, "notes"),
   });
 
   if (!parsed.success) {
@@ -94,6 +109,9 @@ export async function updateVenueAction(
       name: parsed.data.name,
       address: parsed.data.address && parsed.data.address.length > 0 ? parsed.data.address : null,
       color: parsed.data.color ?? null,
+      contact_name: parsed.data.contact_name && parsed.data.contact_name.length > 0 ? parsed.data.contact_name : null,
+      contact_phone: parsed.data.contact_phone && parsed.data.contact_phone.length > 0 ? parsed.data.contact_phone : null,
+      notes: parsed.data.notes && parsed.data.notes.length > 0 ? parsed.data.notes : null,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
