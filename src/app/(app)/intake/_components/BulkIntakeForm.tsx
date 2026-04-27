@@ -1,9 +1,112 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import {
+  useRef,
+  useState,
+  type ChangeEvent,
+  type DragEvent,
+  type FormEvent,
+} from "react";
 import { bulkExtractAction, bulkSaveBookingsAction, type BulkSaveResponse } from "../bulk-actions";
 import type { ExtractionResult } from "@/server/services/extraction";
 import { BOOKING_STATUSES } from "@/modules/bookings";
+
+const MAX_IMAGES = 8;
+const MAX_IMAGE_RAW_BYTES = 5 * 1024 * 1024;
+const MAX_SPREADSHEET_BYTES = 10 * 1024 * 1024;
+const ACCEPTED_IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp"];
+// Plain-text spreadsheet exports only. For real .xlsx/.xls files,
+// users can copy cells directly from Excel/Sheets — copying always
+// puts TSV on the clipboard, which works in the textarea.
+const SPREADSHEET_EXTENSIONS = [".csv", ".tsv", ".txt"];
+// File picker accepts both images and spreadsheets.
+const FILE_PICKER_ACCEPT = [
+  ...ACCEPTED_IMAGE_TYPES,
+  ...SPREADSHEET_EXTENSIONS,
+].join(",");
+
+type UploadedImage = {
+  id: string;
+  name: string;
+  dataUrl: string;
+  size: number;
+};
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error ?? new Error("Read failed"));
+    reader.readAsDataURL(file);
+  });
+}
+
+function readFileAsText(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error ?? new Error("Read failed"));
+    reader.readAsText(file);
+  });
+}
+
+function isSpreadsheetFile(file: File): boolean {
+  const name = file.name.toLowerCase();
+  return SPREADSHEET_EXTENSIONS.some((ext) => name.endsWith(ext));
+}
+
+/**
+ * Lightweight CSV → TSV converter. Handles quoted fields with commas
+ * inside ("Smith, John") and escaped quotes (""). For .tsv just returns
+ * the content as-is.
+ */
+function csvToTsv(csv: string): string {
+  const out: string[] = [];
+  for (const line of csv.split(/\r?\n/)) {
+    if (line.length === 0) {
+      out.push("");
+      continue;
+    }
+    const cells: string[] = [];
+    let current = "";
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (inQuotes) {
+        if (ch === '"' && line[i + 1] === '"') {
+          current += '"';
+          i++;
+        } else if (ch === '"') {
+          inQuotes = false;
+        } else {
+          current += ch;
+        }
+      } else {
+        if (ch === '"') inQuotes = true;
+        else if (ch === ",") {
+          cells.push(current);
+          current = "";
+        } else current += ch;
+      }
+    }
+    cells.push(current);
+    out.push(cells.join("\t"));
+  }
+  return out.join("\n");
+}
+
+/**
+ * Parse a CSV/TSV/TXT file to a TSV string the bulk extractor can ingest.
+ * For .xlsx/.xls users should copy cells directly into the textarea —
+ * spreadsheet apps already put TSV on the clipboard.
+ */
+async function parseSpreadsheetToTsv(file: File): Promise<string> {
+  const text = await readFileAsText(file);
+  if (file.name.toLowerCase().endsWith(".csv")) {
+    return csvToTsv(text);
+  }
+  return text;
+}
 
 /**
  * Bulk intake. Phase 31.
@@ -86,20 +189,132 @@ function extractionToDraft(e: ExtractionResult): DraftRow {
 
 export function BulkIntakeForm() {
   const [text, setText] = useState("");
+  const [images, setImages] = useState<UploadedImage[]>([]);
+  const [dragActive, setDragActive] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<DraftRow[] | null>(null);
   const [topWarnings, setTopWarnings] = useState<string[]>([]);
   const [saveResult, setSaveResult] = useState<BulkSaveResponse | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  async function handleFiles(files: FileList | File[] | null) {
+    if (!files || (files as FileList).length === 0) return;
+    const list = Array.from(files);
+
+    setError(null);
+
+    const acceptedImages: UploadedImage[] = [];
+    const spreadsheetTextBlocks: string[] = [];
+    let imageSlotsLeft = MAX_IMAGES - images.length;
+
+    for (const file of list) {
+      if (isSpreadsheetFile(file)) {
+        if (file.size > MAX_SPREADSHEET_BYTES) {
+          setError(`"${file.name}" is over 10 MB.`);
+          continue;
+        }
+        try {
+          const tsv = await parseSpreadsheetToTsv(file);
+          if (tsv.trim().length > 0) {
+            spreadsheetTextBlocks.push(tsv);
+          }
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : "parse failed";
+          setError(`Could not parse "${file.name}": ${msg}`);
+        }
+        continue;
+      }
+
+      if (ACCEPTED_IMAGE_TYPES.includes(file.type)) {
+        if (imageSlotsLeft <= 0) {
+          setError(
+            `You can upload up to ${MAX_IMAGES} images at a time. Drop the extras and re-add later.`,
+          );
+          continue;
+        }
+        if (file.size > MAX_IMAGE_RAW_BYTES) {
+          setError(`"${file.name}" is over 5 MB.`);
+          continue;
+        }
+        try {
+          const dataUrl = await readFileAsDataUrl(file);
+          acceptedImages.push({
+            id: `${file.name}-${file.size}-${Date.now()}-${Math.random()
+              .toString(36)
+              .slice(2, 8)}`,
+            name: file.name,
+            dataUrl,
+            size: file.size,
+          });
+          imageSlotsLeft -= 1;
+        } catch {
+          setError(`Failed to read "${file.name}".`);
+        }
+        continue;
+      }
+
+      setError(
+        `"${file.name}" isn't a supported file. Use PNG/JPG/WEBP for images or CSV/TSV/XLSX for spreadsheets.`,
+      );
+    }
+
+    if (acceptedImages.length > 0) {
+      setImages((prev) => [...prev, ...acceptedImages]);
+    }
+    if (spreadsheetTextBlocks.length > 0) {
+      setText((prev) =>
+        [prev.trim(), ...spreadsheetTextBlocks]
+          .filter((s) => s.length > 0)
+          .join("\n\n"),
+      );
+    }
+  }
+
+  function removeImage(id: string) {
+    setImages((prev) => prev.filter((img) => img.id !== id));
+  }
+
+  function onFileInput(event: ChangeEvent<HTMLInputElement>) {
+    void handleFiles(event.target.files);
+    // Reset so re-selecting the same file re-fires the change.
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  function onDragOver(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+    setDragActive(true);
+  }
+
+  function onDragLeave(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+    setDragActive(false);
+  }
+
+  function onDrop(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+    setDragActive(false);
+    void handleFiles(event.dataTransfer.files);
+  }
 
   async function handleExtract(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (text.trim().length === 0 && images.length === 0) {
+      setError("Paste some text or upload at least one image.");
+      return;
+    }
     setPending(true);
     setError(null);
     setSaveResult(null);
 
     const form = new FormData();
     form.set("text", text);
+    images.forEach((img, i) => {
+      form.set(`image_${i}`, img.dataUrl);
+    });
     const result = await bulkExtractAction(form);
     setPending(false);
 
@@ -184,24 +399,97 @@ export function BulkIntakeForm() {
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
-            rows={14}
+            rows={10}
             maxLength={50_000}
-            required
             placeholder={
               "04/28/2026\tTuesday\tBucks\tBucks\t10:00 PM-2:00 AM\t$300\tRecurring Tuesday\tBooked\n05/02/2026\tSaturday\tCinco event\tUnknown\t10:00 PM start\tUnknown\tAdam TXR contact\tBooked"
             }
             className="w-full rounded border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900 font-mono"
           />
         </label>
+
+        <div>
+          <span className="block text-sm font-medium text-neutral-700 mb-1">
+            …or drop files here
+          </span>
+          <div
+            onDragOver={onDragOver}
+            onDragLeave={onDragLeave}
+            onDrop={onDrop}
+            className={`rounded-md border-2 border-dashed p-6 text-center transition-colors ${
+              dragActive
+                ? "border-neutral-900 bg-neutral-50"
+                : "border-neutral-300 bg-white"
+            }`}
+          >
+            <p className="text-sm text-neutral-700 mb-1">
+              Drag &amp; drop screenshots or spreadsheets here
+            </p>
+            <p className="text-xs text-neutral-500 mb-3">
+              Images: PNG / JPG / WEBP, up to {MAX_IMAGES} files, 5 MB each.{" "}
+              <br />
+              Spreadsheets: CSV / TSV / TXT, parsed inline into the text
+              above. For .xlsx, copy cells directly from Excel/Sheets and
+              paste into the textarea above (Excel copies as tab-separated).
+            </p>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="rounded border border-neutral-300 px-3 py-1.5 text-sm hover:bg-neutral-50"
+            >
+              Choose files
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept={FILE_PICKER_ACCEPT}
+              multiple
+              onChange={onFileInput}
+              className="hidden"
+            />
+          </div>
+
+          {images.length > 0 && (
+            <ul className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {images.map((img) => (
+                <li
+                  key={img.id}
+                  className="relative border border-neutral-200 rounded-md overflow-hidden bg-neutral-50 group"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={img.dataUrl}
+                    alt={img.name}
+                    className="w-full h-24 object-cover"
+                  />
+                  <div className="px-2 py-1 text-[11px] text-neutral-600 truncate">
+                    {img.name}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeImage(img.id)}
+                    aria-label={`Remove ${img.name}`}
+                    className="absolute top-1 right-1 rounded bg-white/90 border border-neutral-300 px-1.5 py-0.5 text-[11px] hover:bg-red-50 hover:border-red-300 hover:text-red-700 opacity-0 group-hover:opacity-100 focus:opacity-100"
+                  >
+                    Remove
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
         <div className="flex items-center justify-between gap-3">
           <p className="text-xs text-neutral-500">
-            Paste tab-separated rows from a spreadsheet, or any text with
-            multiple bookings. AI will pull each row into a draft for you to
-            review before saving.
+            Paste tab-separated rows from a spreadsheet, or drop screenshots
+            of texts/emails/calendars. AI extracts what it sees and hands you
+            a draft to review before saving.
           </p>
           <button
             type="submit"
-            disabled={pending || text.trim().length === 0}
+            disabled={
+              pending || (text.trim().length === 0 && images.length === 0)
+            }
             className="rounded bg-neutral-900 text-white py-2 px-4 text-sm disabled:opacity-50 shrink-0"
           >
             {pending ? "Extracting…" : "Extract"}

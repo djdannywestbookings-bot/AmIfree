@@ -20,14 +20,40 @@ export type BulkExtractResponse =
   | { ok: true; result: BulkExtractionResult; rawText: string }
   | { ok: false; error: string };
 
+const MAX_IMAGES = 8;
+const MAX_IMAGE_BYTES = 7 * 1024 * 1024; // 7 MB after base64 (~5 MB raw)
+
 export async function bulkExtractAction(
   formData: FormData,
 ): Promise<BulkExtractResponse> {
   const workspace = await requireWorkspace();
 
   const text = String(formData.get("text") ?? "").trim();
-  if (text.length === 0) {
-    return { ok: false, error: "Paste some text first." };
+
+  // Images come in as fields image_0, image_1, ... each holding a
+  // data: URL string (base64). Capped at MAX_IMAGES to keep the
+  // OpenAI request size sane.
+  const images: string[] = [];
+  for (let i = 0; i < MAX_IMAGES; i++) {
+    const url = formData.get(`image_${i}`);
+    if (typeof url !== "string" || url.length === 0) break;
+    if (!url.startsWith("data:image/")) {
+      return {
+        ok: false,
+        error: `Image ${i + 1} is not a valid image data URL.`,
+      };
+    }
+    if (url.length > MAX_IMAGE_BYTES) {
+      return {
+        ok: false,
+        error: `Image ${i + 1} is too large. Trim to under 5 MB.`,
+      };
+    }
+    images.push(url);
+  }
+
+  if (text.length === 0 && images.length === 0) {
+    return { ok: false, error: "Paste some text or upload at least one image." };
   }
   if (text.length > 50_000) {
     return {
@@ -37,7 +63,11 @@ export async function bulkExtractAction(
   }
 
   try {
-    const result = await extractMultipleBookingsFromText(text, workspace);
+    const result = await extractMultipleBookingsFromText(
+      text,
+      workspace,
+      images,
+    );
     return { ok: true, result, rawText: text };
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";

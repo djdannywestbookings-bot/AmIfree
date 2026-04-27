@@ -485,30 +485,48 @@ const BULK_JSON_SCHEMA = {
   },
 } as const;
 
+/**
+ * Phase 32 — accepts optional image data URLs alongside text. Images are
+ * passed to OpenAI's multimodal chat completion (gpt-4o-mini supports
+ * vision). The model OCRs and parses screenshots, text-message captures,
+ * email forwards, etc.
+ *
+ * Heuristic fallback ignores images and uses text only.
+ */
 export async function extractMultipleBookingsFromText(
   text: string,
   workspace: Pick<WorkspaceRow, "service_day_mode" | "nightlife_cutoff_hour">,
+  images: string[] = [],
 ): Promise<BulkExtractionResult> {
   const trimmed = text.trim();
-  if (trimmed.length === 0) {
+  if (trimmed.length === 0 && images.length === 0) {
     return {
       source: "heuristic",
       bookings: [],
-      warnings: ["Input was empty."],
+      warnings: ["Paste some text or upload at least one screenshot."],
     };
   }
 
   if (!serverEnv.OPENAI_API_KEY) {
-    // Heuristic fallback — split on blank lines or newlines, run single
-    // extractor on each chunk. Lower quality but keeps the feature
-    // usable when the API key is missing.
+    if (trimmed.length === 0) {
+      return {
+        source: "heuristic",
+        bookings: [],
+        warnings: [
+          "Image-only extraction requires an OpenAI API key. Paste the text from the screenshots instead.",
+        ],
+      };
+    }
     return extractMultipleViaHeuristic(trimmed, workspace);
   }
 
   try {
-    return await extractMultipleViaOpenAI(trimmed, workspace);
+    return await extractMultipleViaOpenAI(trimmed, workspace, images);
   } catch (err) {
-    const heuristic = extractMultipleViaHeuristic(trimmed, workspace);
+    const heuristic =
+      trimmed.length > 0
+        ? extractMultipleViaHeuristic(trimmed, workspace)
+        : { source: "heuristic" as const, bookings: [], warnings: [] };
     const msg = err instanceof Error ? err.message : "Unknown error";
     return {
       ...heuristic,
@@ -545,9 +563,17 @@ function extractMultipleViaHeuristic(
   };
 }
 
+type UserContentPart =
+  | { type: "text"; text: string }
+  | {
+      type: "image_url";
+      image_url: { url: string; detail?: "low" | "high" | "auto" };
+    };
+
 async function extractMultipleViaOpenAI(
   text: string,
   workspace: Pick<WorkspaceRow, "service_day_mode" | "nightlife_cutoff_hour">,
+  images: string[] = [],
 ): Promise<BulkExtractionResult> {
   const client = getOpenAIClient();
 
@@ -561,12 +587,45 @@ async function extractMultipleViaOpenAI(
     }.`,
   ].join(" ");
 
+  // Build the user content. If only text, send a string (cheaper). If
+  // images present, send a content-parts array with text + each image.
+  let userContent: string | UserContentPart[];
+  if (images.length === 0) {
+    userContent = text;
+  } else {
+    const parts: UserContentPart[] = [];
+    if (text.length > 0) {
+      parts.push({ type: "text", text });
+    } else {
+      parts.push({
+        type: "text",
+        text:
+          "Extract every booking visible in these images. Each image may contain one or many.",
+      });
+    }
+    for (const url of images) {
+      parts.push({
+        type: "image_url",
+        // "high" detail for screenshots so small text (times, dates,
+        // phone numbers) is OCR'd correctly. Cost is negligible at this
+        // volume.
+        image_url: { url, detail: "high" },
+      });
+    }
+    userContent = parts;
+  }
+
   const completion = await client.chat.completions.create({
     model: "gpt-4o-mini",
     messages: [
       { role: "system", content: BULK_SYSTEM_PROMPT },
       { role: "system", content: context },
-      { role: "user", content: text },
+      // The OpenAI SDK type allows string OR array-of-content-parts on
+      // user messages. Cast through unknown to keep the union narrow.
+      {
+        role: "user",
+        content: userContent as unknown as string,
+      },
     ],
     response_format: {
       type: "json_schema",
