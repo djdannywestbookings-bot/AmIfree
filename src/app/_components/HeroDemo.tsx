@@ -171,9 +171,6 @@ export function HeroDemo() {
             <span className="w-2.5 h-2.5 rounded-full bg-red-500/70" />
             <span className="w-2.5 h-2.5 rounded-full bg-amber-500/70" />
             <span className="w-2.5 h-2.5 rounded-full bg-teal-500/70" />
-            <span className="ml-2 text-[11px] text-slate-500 font-mono">
-              from: client
-            </span>
           </div>
           <div className="p-5 min-h-[180px]">
             <div className="rounded-2xl rounded-tl-sm bg-slate-800/80 px-4 py-3 max-w-[95%] text-[15px] leading-relaxed text-slate-200">
