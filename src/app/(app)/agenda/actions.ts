@@ -67,6 +67,10 @@ const createFormSchema = z.object({
   venue_id: z.string().optional(),
   new_venue_name: z.string().optional(),
   new_venue_address: z.string().optional(),
+  assigned_employee_id: z
+    .string()
+    .optional()
+    .transform((v) => (v && v.length > 0 ? v : null)),
   location: z
     .string()
     .optional()
@@ -101,6 +105,7 @@ export async function createBookingAction(
     venue_id: getOrUndef("venue_id"),
     new_venue_name: getOrUndef("new_venue_name"),
     new_venue_address: getOrUndef("new_venue_address"),
+    assigned_employee_id: getOrUndef("assigned_employee_id"),
     location: getOrUndef("location"),
     pay: getOrUndef("pay"),
     notes: getOrUndef("notes"),
@@ -161,6 +166,7 @@ export async function createBookingAction(
       end_at: parsed.data.end_at,
       all_day: parsed.data.all_day ?? false,
       venue_id: venueId,
+      assigned_employee_id: parsed.data.assigned_employee_id,
       location: parsed.data.location,
       pay: parsed.data.pay,
       notes: parsed.data.notes,

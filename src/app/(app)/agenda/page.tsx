@@ -2,9 +2,11 @@ import {
   requireWorkspace,
   listBookings,
   listVenues,
+  listAssignableEmployees,
 } from "@/server/services";
 import { BOOKING_STATUSES, type BookingRow } from "@/modules/bookings";
 import type { VenueRow } from "@/modules/venues";
+import type { WorkspaceMemberRow } from "@/modules/auth";
 import { BookingForm } from "./_components/BookingForm";
 import {
   updateBookingStatusAction,
@@ -53,13 +55,25 @@ function venueLabel(b: BookingRow, venuesById: Map<string, VenueRow>): string | 
   return b.location;
 }
 
+function employeeLabel(
+  b: BookingRow,
+  employeesById: Map<string, WorkspaceMemberRow>,
+): string | null {
+  if (!b.assigned_employee_id) return null;
+  const m = employeesById.get(b.assigned_employee_id);
+  if (!m) return null;
+  return m.name || m.email || "(unnamed)";
+}
+
 export default async function AgendaPage() {
   const workspace = await requireWorkspace();
-  const [bookings, venues] = await Promise.all([
+  const [bookings, venues, employees] = await Promise.all([
     listBookings(workspace),
     listVenues(workspace),
+    listAssignableEmployees(workspace),
   ]);
   const venuesById = new Map(venues.map((v) => [v.id, v] as const));
+  const employeesById = new Map(employees.map((m) => [m.id, m] as const));
 
   return (
     <main className="max-w-screen-lg mx-auto p-4 sm:p-8 space-y-6">
@@ -73,7 +87,7 @@ export default async function AgendaPage() {
         </p>
       </div>
 
-      <BookingForm venues={venues} />
+      <BookingForm venues={venues} employees={employees} />
 
       {bookings.length === 0 ? (
         <div className="border border-dashed border-neutral-300 rounded-md p-8 text-center text-sm text-neutral-500">
@@ -83,6 +97,7 @@ export default async function AgendaPage() {
         <ul className="space-y-2">
           {bookings.map((b) => {
             const venue = venueLabel(b, venuesById);
+            const assignee = employeeLabel(b, employeesById);
             return (
               <li
                 key={b.id}
@@ -98,6 +113,11 @@ export default async function AgendaPage() {
                     >
                       {b.status}
                     </span>
+                    {assignee && (
+                      <span className="inline-block text-xs px-2 py-0.5 rounded border bg-indigo-50 text-indigo-700 border-indigo-200">
+                        → {assignee}
+                      </span>
+                    )}
                   </div>
                   <div className="text-xs text-neutral-500 mt-1">
                     {formatWhen(b)}

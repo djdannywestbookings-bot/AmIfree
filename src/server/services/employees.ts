@@ -221,3 +221,44 @@ export async function getCurrentMemberRole(
     .maybeSingle();
   return (data as { role: "owner" | "manager_lite" | "employee" } | null)?.role ?? null;
 }
+
+/**
+ * Phase 40 — Get the current user's workspace_members row id. Used by
+ * /my-calendar to filter bookings to "assigned to me".
+ *
+ * Returns null if the user isn't a member.
+ */
+export async function getCurrentMemberId(
+  workspace: Pick<WorkspaceRow, "id">,
+): Promise<string | null> {
+  const supabase = await createServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+  const { data } = await supabase
+    .from("workspace_members")
+    .select("id")
+    .eq("workspace_id", workspace.id)
+    .eq("user_id", user.id)
+    .maybeSingle();
+  return (data as { id: string } | null)?.id ?? null;
+}
+
+/**
+ * Phase 40 — list employees that can be assigned to a shift.
+ * Excludes disabled members. Pending invites can be assigned (so an
+ * owner can pre-fill the schedule before the team has signed in).
+ */
+export async function listAssignableEmployees(
+  workspace: Pick<WorkspaceRow, "id">,
+): Promise<WorkspaceMemberRow[]> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("workspace_members")
+    .select("*")
+    .eq("workspace_id", workspace.id)
+    .neq("status", "disabled")
+    .order("name", { ascending: true, nullsFirst: false });
+  return (data ?? []).map((row) => workspaceMemberRowSchema.parse(row));
+}

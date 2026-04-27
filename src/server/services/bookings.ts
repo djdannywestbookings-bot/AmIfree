@@ -143,6 +143,7 @@ export async function createBooking(
       all_day: parsed.all_day ?? false,
       service_day: serviceDay,
       venue_id: parsed.venue_id ?? null,
+      assigned_employee_id: parsed.assigned_employee_id ?? null,
       location: parsed.location ?? null,
       pay: parsed.pay ?? null,
       notes: parsed.notes ?? null,

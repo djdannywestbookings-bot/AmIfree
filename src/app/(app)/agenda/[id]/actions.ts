@@ -51,6 +51,7 @@ const editSchema = z.object({
   venue_id: z.string().optional(),
   new_venue_name: z.string().optional(),
   new_venue_address: z.string().optional(),
+  assigned_employee_id: z.string().optional(),
   location: z.string().optional(),
   pay: z.string().optional(),
   notes: z.string().optional(),
@@ -72,6 +73,7 @@ export async function updateBookingAction(
     venue_id: getOrUndef("venue_id"),
     new_venue_name: getOrUndef("new_venue_name"),
     new_venue_address: getOrUndef("new_venue_address"),
+    assigned_employee_id: getOrUndef("assigned_employee_id"),
     location: getOrUndef("location"),
     pay: getOrUndef("pay"),
     notes: getOrUndef("notes"),
@@ -125,6 +127,10 @@ export async function updateBookingAction(
   try {
     await updateBooking(workspace, parsed.data.id, {
       venue_id: venueId,
+      assigned_employee_id:
+        parsed.data.assigned_employee_id && parsed.data.assigned_employee_id.length > 0
+          ? parsed.data.assigned_employee_id
+          : null,
       title: parsed.data.title,
       status: parsed.data.status,
       start_at: parsed.data.start_at || null,

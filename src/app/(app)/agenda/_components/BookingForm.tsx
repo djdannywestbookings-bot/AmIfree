@@ -4,10 +4,12 @@ import { useState, type FormEvent } from "react";
 import { createBookingAction } from "../actions";
 import { BOOKING_STATUSES } from "@/modules/bookings";
 import type { VenueRow } from "@/modules/venues";
+import type { WorkspaceMemberRow } from "@/modules/auth";
 import { DatePicker } from "./DatePicker";
 import { TimeInput } from "./TimeInput";
 import { DurationInput } from "./DurationInput";
 import { VenueSelect } from "./VenueSelect";
+import { EmployeeSelect } from "./EmployeeSelect";
 
 /**
  * Inline create-booking form (Phase 24D).
@@ -43,7 +45,13 @@ function combineDateAndTime(
   return d.toISOString();
 }
 
-export function BookingForm({ venues }: { venues: VenueRow[] }) {
+export function BookingForm({
+  venues,
+  employees,
+}: {
+  venues: VenueRow[];
+  employees: WorkspaceMemberRow[];
+}) {
   const [error, setError] = useState<string | null>(null);
   const [conflicts, setConflicts] = useState<{ hard: string[]; possible: string[] } | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
@@ -233,11 +241,19 @@ export function BookingForm({ venues }: { venues: VenueRow[] }) {
             </div>
           </div>
 
-          <div>
-            <span className="block text-xs font-medium text-neutral-700 mb-1">
-              Venue
-            </span>
-            <VenueSelect venues={venues} />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <span className="block text-xs font-medium text-neutral-700 mb-1">
+                Venue
+              </span>
+              <VenueSelect venues={venues} />
+            </div>
+            <div>
+              <span className="block text-xs font-medium text-neutral-700 mb-1">
+                Assigned to
+              </span>
+              <EmployeeSelect employees={employees} />
+            </div>
           </div>
 
           <details>

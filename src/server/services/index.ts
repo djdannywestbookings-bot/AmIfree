@@ -37,4 +37,6 @@ export {
   deleteEmployee,
   loginAttachPendingInvites,
   getCurrentMemberRole,
+  getCurrentMemberId,
+  listAssignableEmployees,
 } from "./employees";

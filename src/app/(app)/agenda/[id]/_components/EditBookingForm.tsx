@@ -4,10 +4,12 @@ import { useState, type FormEvent } from "react";
 import { updateBookingAction, deleteFromEditAction } from "../actions";
 import { BOOKING_STATUSES, type BookingRow } from "@/modules/bookings";
 import type { VenueRow } from "@/modules/venues";
+import type { WorkspaceMemberRow } from "@/modules/auth";
 import { DatePicker } from "../../_components/DatePicker";
 import { TimeInput } from "../../_components/TimeInput";
 import { DurationInput } from "../../_components/DurationInput";
 import { VenueSelect } from "../../_components/VenueSelect";
+import { EmployeeSelect } from "../../_components/EmployeeSelect";
 
 function splitIsoToDateAndTime(iso: string | null): { date: string; time: string } {
   if (!iso) return { date: "", time: "" };
@@ -51,9 +53,11 @@ function durationMinutesFromStartEnd(
 export function EditBookingForm({
   booking,
   venues,
+  employees,
 }: {
   booking: BookingRow;
   venues: VenueRow[];
+  employees: WorkspaceMemberRow[];
 }) {
   const initialDateTime = splitIsoToDateAndTime(booking.start_at);
 
@@ -196,11 +200,22 @@ export function EditBookingForm({
         </div>
       </div>
 
-      <div>
-        <span className="block text-xs font-medium text-neutral-700 mb-1">
-          Venue
-        </span>
-        <VenueSelect venues={venues} initialVenueId={booking.venue_id} />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <span className="block text-xs font-medium text-neutral-700 mb-1">
+            Venue
+          </span>
+          <VenueSelect venues={venues} initialVenueId={booking.venue_id} />
+        </div>
+        <div>
+          <span className="block text-xs font-medium text-neutral-700 mb-1">
+            Assigned to
+          </span>
+          <EmployeeSelect
+            employees={employees}
+            initialAssignedId={booking.assigned_employee_id}
+          />
+        </div>
       </div>
 
       <details open={Boolean(location)}>
