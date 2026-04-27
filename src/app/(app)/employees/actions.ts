@@ -26,11 +26,31 @@ async function requireOwner() {
   return workspace;
 }
 
+// Coerces "12.50" → 1250 (USD-string to cents). Empty/missing → undefined.
+const payRateUsdToCents = z
+  .string()
+  .optional()
+  .transform((v) => {
+    if (!v || v.trim().length === 0) return undefined;
+    const n = Number(v);
+    if (!Number.isFinite(n) || n < 0) return undefined;
+    return Math.round(n * 100);
+  })
+  .pipe(
+    z
+      .number()
+      .int()
+      .min(0)
+      .max(99_999_900)
+      .optional(),
+  );
+
 const createSchema = z.object({
   email: z.string().email().toLowerCase(),
   name: z.string().trim().min(1).max(200),
   phone: z.string().trim().max(60).optional(),
   role: z.enum(APP_ROLES).default("employee"),
+  default_pay_rate_cents: payRateUsdToCents,
 });
 
 const updateSchema = z.object({
@@ -40,6 +60,7 @@ const updateSchema = z.object({
   phone: z.string().trim().max(60).optional(),
   role: z.enum(APP_ROLES).optional(),
   status: z.enum(MEMBER_STATUSES).optional(),
+  default_pay_rate_cents: payRateUsdToCents,
 });
 
 const deleteSchema = z.object({ id: z.string().uuid() });
@@ -64,6 +85,7 @@ export async function createEmployeeAction(
     name: getOrUndef(formData, "name"),
     phone: getOrUndef(formData, "phone"),
     role: getOrUndef(formData, "role") ?? "employee",
+    default_pay_rate_cents: getOrUndef(formData, "default_pay_rate_cents"),
   });
   if (!parsed.success) {
     return {
@@ -78,6 +100,7 @@ export async function createEmployeeAction(
       name: parsed.data.name,
       phone: parsed.data.phone && parsed.data.phone.length > 0 ? parsed.data.phone : null,
       role: parsed.data.role,
+      default_pay_rate_cents: parsed.data.default_pay_rate_cents,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
@@ -105,6 +128,7 @@ export async function updateEmployeeAction(
     phone: getOrUndef(formData, "phone"),
     role: getOrUndef(formData, "role"),
     status: getOrUndef(formData, "status"),
+    default_pay_rate_cents: getOrUndef(formData, "default_pay_rate_cents"),
   });
   if (!parsed.success) {
     return {
@@ -120,6 +144,7 @@ export async function updateEmployeeAction(
       phone: parsed.data.phone !== undefined ? (parsed.data.phone.length > 0 ? parsed.data.phone : null) : undefined,
       role: parsed.data.role,
       status: parsed.data.status,
+      default_pay_rate_cents: parsed.data.default_pay_rate_cents,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";

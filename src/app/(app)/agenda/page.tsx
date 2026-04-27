@@ -3,11 +3,13 @@ import {
   listBookings,
   listVenues,
   listAssignableEmployees,
+  computeScheduleStats,
 } from "@/server/services";
 import { BOOKING_STATUSES, type BookingRow } from "@/modules/bookings";
 import type { VenueRow } from "@/modules/venues";
 import type { WorkspaceMemberRow } from "@/modules/auth";
 import { BookingForm } from "./_components/BookingForm";
+import { StatsBar } from "./_components/StatsBar";
 import {
   updateBookingStatusAction,
   deleteBookingAction,
@@ -74,6 +76,7 @@ export default async function AgendaPage() {
   ]);
   const venuesById = new Map(venues.map((v) => [v.id, v] as const));
   const employeesById = new Map(employees.map((m) => [m.id, m] as const));
+  const stats = computeScheduleStats(bookings, employees);
 
   return (
     <main className="max-w-screen-lg mx-auto p-4 sm:p-8 space-y-6">
@@ -86,6 +89,8 @@ export default async function AgendaPage() {
             : "standard day"}
         </p>
       </div>
+
+      <StatsBar stats={stats} />
 
       <BookingForm venues={venues} employees={employees} />
 

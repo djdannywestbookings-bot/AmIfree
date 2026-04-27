@@ -32,6 +32,13 @@ export function EmployeeForm({ existing }: { existing?: WorkspaceMemberRow }) {
   const [phone, setPhone] = useState(existing?.phone ?? "");
   const [role, setRole] = useState(existing?.role ?? "employee");
   const [status, setStatus] = useState(existing?.status ?? "joined");
+  // Display rate as USD with 2-decimal string for input ergonomics;
+  // we convert to cents on submit.
+  const [payRateUsd, setPayRateUsd] = useState(
+    existing?.default_pay_rate_cents
+      ? (existing.default_pay_rate_cents / 100).toFixed(2)
+      : "",
+  );
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -47,6 +54,7 @@ export function EmployeeForm({ existing }: { existing?: WorkspaceMemberRow }) {
     form.set("name", name);
     if (phone) form.set("phone", phone);
     form.set("role", role);
+    if (payRateUsd) form.set("default_pay_rate_cents", payRateUsd);
 
     if (isEdit && existing) {
       form.set("id", existing.id);
@@ -105,19 +113,40 @@ export function EmployeeForm({ existing }: { existing?: WorkspaceMemberRow }) {
         </label>
       </div>
 
-      <label className="block">
-        <span className="block text-xs font-medium text-neutral-700 mb-1">
-          Phone (optional)
-        </span>
-        <input
-          type="tel"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          maxLength={60}
-          placeholder="(555) 555-5555"
-          className="w-full rounded border border-neutral-300 px-3 py-2 text-sm"
-        />
-      </label>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <label className="block">
+          <span className="block text-xs font-medium text-neutral-700 mb-1">
+            Phone (optional)
+          </span>
+          <input
+            type="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            maxLength={60}
+            placeholder="(555) 555-5555"
+            className="w-full rounded border border-neutral-300 px-3 py-2 text-sm"
+          />
+        </label>
+        <label className="block">
+          <span className="block text-xs font-medium text-neutral-700 mb-1">
+            Pay rate (USD/hour)
+          </span>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-neutral-500">
+              $
+            </span>
+            <input
+              type="number"
+              min={0}
+              step={0.01}
+              value={payRateUsd}
+              onChange={(e) => setPayRateUsd(e.target.value)}
+              placeholder="0.00"
+              className="w-full rounded border border-neutral-300 pl-7 pr-3 py-2 text-sm"
+            />
+          </div>
+        </label>
+      </div>
 
       <label className="block">
         <span className="block text-xs font-medium text-neutral-700 mb-1">

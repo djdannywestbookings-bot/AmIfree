@@ -40,3 +40,9 @@ export {
   getCurrentMemberId,
   listAssignableEmployees,
 } from "./employees";
+export {
+  computeScheduleStats,
+  formatHours,
+  formatUsdFromCents,
+  type ScheduleStats,
+} from "./stats";

@@ -51,6 +51,8 @@ export const workspaceMemberRowSchema = z.object({
   status: z.enum(MEMBER_STATUSES).default("joined"),
   invited_at: z.string().datetime({ offset: true }).nullable().default(null),
   joined_at: z.string().datetime({ offset: true }).nullable().default(null),
+  // Phase 41 — pay rate per scheduled hour, USD cents.
+  default_pay_rate_cents: z.number().int().min(0).default(0),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
 });

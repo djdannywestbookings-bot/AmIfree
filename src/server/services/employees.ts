@@ -106,6 +106,7 @@ export async function createEmployee(
       status: existingUserId ? "joined" : "pending",
       invited_at: now,
       joined_at: existingUserId ? now : null,
+      default_pay_rate_cents: parsed.default_pay_rate_cents ?? 0,
     })
     .select("*")
     .single();

@@ -20,6 +20,8 @@ export const employeeCreateInputSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(200),
   phone: z.string().trim().max(60).nullable().optional(),
   role: z.enum(APP_ROLES).default("employee"),
+  // Phase 41 — pay rate per scheduled hour, USD cents.
+  default_pay_rate_cents: z.number().int().min(0).max(99_999_900).optional(),
 });
 
 export type EmployeeCreateInput = z.infer<typeof employeeCreateInputSchema>;
@@ -30,6 +32,7 @@ export const employeeUpdateInputSchema = z.object({
   phone: z.string().trim().max(60).nullable().optional(),
   role: z.enum(APP_ROLES).optional(),
   status: z.enum(MEMBER_STATUSES).optional(),
+  default_pay_rate_cents: z.number().int().min(0).max(99_999_900).optional(),
 });
 
 export type EmployeeUpdateInput = z.infer<typeof employeeUpdateInputSchema>;
