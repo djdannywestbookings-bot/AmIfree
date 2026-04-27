@@ -271,24 +271,44 @@ export function EditBookingForm({
           >
             Cancel
           </a>
+          {/* Native confirm() prompt prevents accidental deletes —
+              this used to be hidden behind a "Danger zone" toggle but
+              users couldn't find it. Now visible, but red-tinted and
+              guarded by a confirmation. */}
+          <DeleteShiftButton bookingId={booking.id} title={booking.title} />
         </div>
       </div>
+    </form>
+  );
+}
 
-      {/* Separate destructive action — uses its own server action */}
-      <details className="pt-2 border-t border-neutral-200">
-        <summary className="text-xs text-neutral-500 cursor-pointer hover:text-neutral-700">
-          Danger zone
-        </summary>
-        <form action={deleteFromEditAction} className="mt-2">
-          <input type="hidden" name="id" value={booking.id} />
-          <button
-            type="submit"
-            className="text-xs rounded border border-red-200 text-red-700 py-1.5 px-3 hover:bg-red-50"
-          >
-            Delete this booking
-          </button>
-        </form>
-      </details>
+function DeleteShiftButton({
+  bookingId,
+  title,
+}: {
+  bookingId: string;
+  title: string;
+}) {
+  return (
+    <form
+      action={deleteFromEditAction}
+      onSubmit={(e) => {
+        if (
+          !window.confirm(
+            `Delete "${title}"? This can't be undone.`,
+          )
+        ) {
+          e.preventDefault();
+        }
+      }}
+    >
+      <input type="hidden" name="id" value={bookingId} />
+      <button
+        type="submit"
+        className="text-xs rounded border border-red-300 bg-red-50 text-red-700 py-2 px-4 hover:bg-red-100"
+      >
+        Delete shift
+      </button>
     </form>
   );
 }

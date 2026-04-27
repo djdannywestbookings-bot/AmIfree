@@ -103,6 +103,37 @@ export async function updateVenue(
 }
 
 /**
+ * Phase 33 — counts of bookings per venue. Used to render the
+ * "Bookings" column on the venues table.
+ *
+ * Aggregates client-side from a single workspace-scoped fetch of
+ * (venue_id) tuples. Cheap up to thousands of bookings; if the
+ * workload outgrows that we can move to a SQL group_by view.
+ */
+export async function listVenueBookingCounts(
+  workspace: Pick<WorkspaceRow, "id">,
+): Promise<Record<string, number>> {
+  const supabase = await createServerClient();
+  const { data, error } = await supabase
+    .from("bookings")
+    .select("venue_id")
+    .eq("workspace_id", workspace.id)
+    .not("venue_id", "is", null);
+
+  if (error) {
+    throw new Error(`Failed to count venue bookings: ${error.message}`);
+  }
+
+  const counts: Record<string, number> = {};
+  for (const row of data ?? []) {
+    const id = (row as { venue_id: string | null }).venue_id;
+    if (!id) continue;
+    counts[id] = (counts[id] ?? 0) + 1;
+  }
+  return counts;
+}
+
+/**
  * Delete a venue. Bookings linked to it have venue_id set to null
  * (via the FK's ON DELETE SET NULL in migration 0005), so the
  * historical booking rows survive without dangling references.

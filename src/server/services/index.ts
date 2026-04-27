@@ -25,4 +25,5 @@ export {
   createVenue,
   updateVenue,
   deleteVenue,
+  listVenueBookingCounts,
 } from "./venues";
