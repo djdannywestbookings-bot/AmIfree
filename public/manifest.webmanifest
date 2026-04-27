@@ -1,13 +1,14 @@
 {
   "name": "AmIFree",
   "short_name": "AmIFree",
-  "description": "DJ-first scheduling and booking platform",
-  "start_url": "/",
+  "description": "Scheduling app for service providers who take bookings — paste a text message, get a calendar entry, sync to Google/Apple/Outlook.",
+  "start_url": "/calendar",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "theme_color": "#0a0a0a",
+  "theme_color": "#4f46e5",
   "background_color": "#ffffff",
+  "categories": ["productivity", "business"],
   "icons": [
     {
       "src": "/icon.svg",

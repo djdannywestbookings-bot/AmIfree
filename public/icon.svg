@@ -1,4 +1,24 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="96" fill="#0a0a0a"/>
-  <text x="256" y="340" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif" font-size="280" font-weight="700" text-anchor="middle" fill="#ffffff">A</text>
+  <defs>
+    <linearGradient id="amifree-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#7c3aed"/>
+      <stop offset="100%" stop-color="#4f46e5"/>
+    </linearGradient>
+  </defs>
+  <!-- Rounded brand square. iOS auto-rounds anyway, but the rx
+       keeps Android's mask cleanly inside the safe zone. -->
+  <rect width="512" height="512" rx="96" fill="url(#amifree-bg)"/>
+
+  <!-- Stylized "A" — diagonal stroke with hook on the right side
+       evoking the question mark from the wordmark. White on the
+       indigo gradient for max legibility at small sizes. -->
+  <g fill="none" stroke="#ffffff" stroke-width="44" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Left leg of A, diagonal -->
+    <path d="M 130 380 L 240 130"/>
+    <!-- Top hook into a question-mark curve, ends at the dot -->
+    <path d="M 240 130 Q 360 130 360 230 Q 360 280 320 300"/>
+  </g>
+
+  <!-- Teal accent dot — the "answer" to the A's question. -->
+  <circle cx="320" cy="380" r="30" fill="#14b8a6"/>
 </svg>
