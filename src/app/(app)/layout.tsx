@@ -58,6 +58,12 @@ export default async function AppLayout({
             <Link href="/intake" className="hover:text-indigo-600 transition-colors">
               Intake
             </Link>
+            <Link href="/timesheet" className="hover:text-indigo-600 transition-colors">
+              Timesheet
+            </Link>
+            <Link href="/reports" className="hover:text-indigo-600 transition-colors">
+              Reports
+            </Link>
             <Link href="/settings" className="hover:text-indigo-600 transition-colors">
               Settings
             </Link>
