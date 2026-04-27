@@ -74,5 +74,6 @@ export async function verifyOtp(formData: FormData): Promise<ActionResult> {
   }
 
   // redirect() throws a framework-handled error; the client never sees a return.
-  redirect("/agenda");
+  // Calendar is the primary surface as of Phase 29.
+  redirect("/calendar");
 }

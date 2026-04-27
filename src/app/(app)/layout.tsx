@@ -32,12 +32,18 @@ export default async function AppLayout({
       <header className="border-b border-neutral-200 bg-white sticky top-0 z-10">
         <nav className="max-w-screen-lg mx-auto px-4 py-3 flex items-center gap-4 sm:gap-6 text-sm">
           <span className="font-semibold">AmIFree</span>
-          <div className="flex gap-3 sm:gap-4 flex-1">
+          <div className="flex gap-3 sm:gap-4 flex-1 overflow-x-auto">
+            <Link href="/calendar" className="hover:text-neutral-600">
+              Calendar
+            </Link>
+            <Link href="/my-calendar" className="hover:text-neutral-600 whitespace-nowrap">
+              My Calendar
+            </Link>
             <Link href="/agenda" className="hover:text-neutral-600">
               Schedule
             </Link>
-            <Link href="/coverage" className="hover:text-neutral-600">
-              Coverage
+            <Link href="/venues" className="hover:text-neutral-600">
+              Venues
             </Link>
             <Link href="/intake" className="hover:text-neutral-600">
               Intake

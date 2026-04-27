@@ -12,10 +12,13 @@ import { updateSession } from "@/lib/supabase/middleware";
 
 const APP_ROUTE_PREFIXES = [
   "/agenda",
+  "/calendar",
   "/coverage",
   "/intake",
-  "/settings",
+  "/my-calendar",
   "/onboarding",
+  "/settings",
+  "/venues",
 ];
 
 export async function middleware(request: NextRequest) {
@@ -35,7 +38,9 @@ export async function middleware(request: NextRequest) {
 
   if (isLoginRoute && user) {
     const url = request.nextUrl.clone();
-    url.pathname = "/agenda";
+    // Calendar is the primary surface as of Phase 29; sign-in lands
+    // there. Schedule (list view) stays accessible from the nav.
+    url.pathname = "/calendar";
     return NextResponse.redirect(url);
   }
 
