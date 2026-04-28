@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { createVenueAction, updateVenueAction } from "../actions";
+import { importVenueFromUrlAction } from "../import-actions";
 import type { VenueRow } from "@/modules/venues";
 import { VenueColorPicker } from "./VenueColorPicker";
 import { VenueMapPreview } from "./VenueMapPreview";
@@ -27,6 +28,47 @@ export function VenueForm({ existing }: { existing?: VenueRow }) {
   const [notes, setNotes] = useState(existing?.notes ?? "");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Google Maps import row state.
+  const [importUrl, setImportUrl] = useState("");
+  const [importing, setImporting] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [importMessage, setImportMessage] = useState<string | null>(null);
+
+  async function handleImport() {
+    if (!importUrl.trim()) {
+      setImportError("Paste a Google Maps URL first.");
+      return;
+    }
+    setImporting(true);
+    setImportError(null);
+    setImportMessage(null);
+
+    const form = new FormData();
+    form.set("url", importUrl);
+    const result = await importVenueFromUrlAction(form);
+    setImporting(false);
+
+    if (!result.ok) {
+      setImportError(result.error);
+      return;
+    }
+    if (result.name) setName(result.name);
+    if (result.address) setAddress(result.address);
+
+    if (result.name && result.address) {
+      setImportMessage("Imported. Review the fields and save.");
+    } else if (result.name) {
+      setImportMessage(
+        "Got the venue name. Couldn't read the address — fill it in below.",
+      );
+    } else if (result.address) {
+      setImportMessage(
+        "Got the address. Couldn't read the name — fill it in below.",
+      );
+    }
+    setImportUrl("");
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -70,6 +112,48 @@ export function VenueForm({ existing }: { existing?: VenueRow }) {
       onSubmit={handleSubmit}
       className="space-y-4 border border-neutral-200 rounded-md p-4 bg-white"
     >
+      {/* Google Maps import — optional fast path. The user can also
+       *  fill the form manually below; this just pre-fills name + address.
+       */}
+      <div className="rounded-md border border-indigo-200 bg-indigo-50/40 p-3 space-y-2">
+        <div className="flex items-baseline justify-between gap-3 flex-wrap">
+          <span className="block text-xs font-medium text-indigo-900">
+            Import from Google Maps
+          </span>
+          <span className="text-[11px] text-slate-500">
+            Paste a share link — we&rsquo;ll fill in the name + address.
+          </span>
+        </div>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+          <input
+            type="url"
+            value={importUrl}
+            onChange={(e) => {
+              setImportUrl(e.target.value);
+              setImportError(null);
+            }}
+            placeholder="https://maps.app.goo.gl/…"
+            className="flex-1 rounded border border-slate-300 px-3 py-1.5 text-sm bg-white"
+          />
+          <button
+            type="button"
+            onClick={handleImport}
+            disabled={importing || importUrl.trim().length === 0}
+            className="rounded bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 text-sm font-medium disabled:opacity-50 transition-colors shrink-0"
+          >
+            {importing ? "Importing…" : "Import"}
+          </button>
+        </div>
+        {importMessage && (
+          <p className="text-xs text-emerald-700">{importMessage}</p>
+        )}
+        {importError && (
+          <p className="text-xs text-red-600" role="alert">
+            {importError}
+          </p>
+        )}
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Left column: identity + contact */}
         <div className="space-y-3">
