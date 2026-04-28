@@ -6,6 +6,8 @@ import {
   getCurrentMemberRole,
   listPositions,
   listPositionsForEmployee,
+  listVenues,
+  listVenueIdsForEmployee,
 } from "@/server/services";
 import { EmployeeForm } from "../_components/EmployeeForm";
 
@@ -21,11 +23,14 @@ export default async function EditEmployeePage({
   }
 
   const { id } = await params;
-  const [employee, allPositions, currentPositions] = await Promise.all([
-    getEmployeeById(workspace, id),
-    listPositions(workspace),
-    listPositionsForEmployee(id),
-  ]);
+  const [employee, allPositions, currentPositions, allVenues, currentVenueIds] =
+    await Promise.all([
+      getEmployeeById(workspace, id),
+      listPositions(workspace),
+      listPositionsForEmployee(id),
+      listVenues(workspace),
+      listVenueIdsForEmployee(id),
+    ]);
   if (!employee) notFound();
 
   return (
@@ -43,6 +48,8 @@ export default async function EditEmployeePage({
         existing={employee}
         allPositions={allPositions}
         selectedPositionIds={currentPositions.map((p) => p.id)}
+        allVenues={allVenues}
+        selectedVenueIds={currentVenueIds}
       />
     </main>
   );

@@ -4,6 +4,7 @@ import {
   requireWorkspace,
   getCurrentMemberRole,
   listPositions,
+  listVenues,
 } from "@/server/services";
 import { EmployeeForm } from "../_components/EmployeeForm";
 
@@ -14,7 +15,10 @@ export default async function NewEmployeePage() {
     redirect("/calendar");
   }
 
-  const positions = await listPositions(workspace);
+  const [positions, venues] = await Promise.all([
+    listPositions(workspace),
+    listVenues(workspace),
+  ]);
 
   return (
     <main className="max-w-screen-md mx-auto p-4 sm:p-8 space-y-4">
@@ -31,7 +35,7 @@ export default async function NewEmployeePage() {
         Invite a team member by email. They&apos;ll show up as Pending in
         your roster until they sign in for the first time.
       </p>
-      <EmployeeForm allPositions={positions} />
+      <EmployeeForm allPositions={positions} allVenues={venues} />
     </main>
   );
 }

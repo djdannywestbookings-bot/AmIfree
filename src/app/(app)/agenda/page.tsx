@@ -5,6 +5,7 @@ import {
   listAssignableEmployees,
   computeScheduleStats,
   getCurrentMemberId,
+  listVenueEmployeeMap,
 } from "@/server/services";
 import { type BookingRow } from "@/modules/bookings";
 import type { VenueRow } from "@/modules/venues";
@@ -78,12 +79,14 @@ function employeeLabel(
 
 export default async function AgendaPage() {
   const workspace = await requireWorkspace();
-  const [bookings, venues, employees, currentMemberId] = await Promise.all([
-    listBookings(workspace),
-    listVenues(workspace),
-    listAssignableEmployees(workspace),
-    getCurrentMemberId(workspace),
-  ]);
+  const [bookings, venues, employees, currentMemberId, venueEmployeeMap] =
+    await Promise.all([
+      listBookings(workspace),
+      listVenues(workspace),
+      listAssignableEmployees(workspace),
+      getCurrentMemberId(workspace),
+      listVenueEmployeeMap(workspace),
+    ]);
   const venuesById = new Map(venues.map((v) => [v.id, v] as const));
   const employeesById = new Map(employees.map((m) => [m.id, m] as const));
   const stats = computeScheduleStats(bookings, employees);
@@ -106,6 +109,7 @@ export default async function AgendaPage() {
         venues={venues}
         employees={employees}
         currentMemberId={currentMemberId}
+        venueEmployeeMap={venueEmployeeMap}
       />
 
       {bookings.length === 0 ? (

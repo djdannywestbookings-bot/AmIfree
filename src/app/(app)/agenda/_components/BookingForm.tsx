@@ -61,10 +61,16 @@ export function BookingForm({
   venues,
   employees,
   currentMemberId,
+  venueEmployeeMap = {},
 }: {
   venues: VenueRow[];
   employees: WorkspaceMemberRow[];
   currentMemberId?: string | null;
+  /**
+   * Map of venue_id → eligible employee ids. When the user picks a
+   * venue, EmployeeSelect filters to that venue's eligible list.
+   */
+  venueEmployeeMap?: Record<string, string[]>;
 }) {
   const [error, setError] = useState<string | null>(null);
   const [conflicts, setConflicts] = useState<{ hard: string[]; possible: string[] } | null>(null);
@@ -78,6 +84,13 @@ export function BookingForm({
   const [date, setDate] = useState("");
   const [startTime, setStartTime] = useState("");
   const [durationMinutes, setDurationMinutes] = useState("");
+  const [selectedVenueId, setSelectedVenueId] = useState<string>("");
+
+  // When a venue is selected, narrow the assignable employee list.
+  // Empty venue → null (no filter, all employees show).
+  const eligibleEmployeeIds: string[] | null = selectedVenueId
+    ? venueEmployeeMap[selectedVenueId] ?? []
+    : null;
 
   function resetForm() {
     setTitle("");
@@ -256,7 +269,10 @@ export function BookingForm({
               <span className="block text-xs font-medium text-neutral-700 mb-1">
                 Venue
               </span>
-              <VenueSelect venues={venues} />
+              <VenueSelect
+                venues={venues}
+                onSelectedIdChange={setSelectedVenueId}
+              />
             </div>
             <div>
               <span className="block text-xs font-medium text-neutral-700 mb-1">
@@ -265,6 +281,7 @@ export function BookingForm({
               <EmployeeSelect
                 employees={employees}
                 currentMemberId={currentMemberId}
+                eligibleEmployeeIds={eligibleEmployeeIds}
               />
             </div>
           </div>

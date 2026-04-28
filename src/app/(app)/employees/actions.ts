@@ -10,6 +10,7 @@ import {
   deleteEmployee,
   getCurrentMemberRole,
   setEmployeePositions,
+  setEmployeeVenues,
 } from "@/server/services";
 import { APP_ROLES } from "@/server/policies/roles";
 import { MEMBER_STATUSES } from "@/modules/auth";
@@ -122,6 +123,16 @@ export async function createEmployeeAction(
     }
   }
 
+  // Venue eligibility — same diff-based pattern.
+  const venueIds = formData.getAll("venue_ids").map(String);
+  if (createdId && venueIds.length > 0) {
+    try {
+      await setEmployeeVenues(workspace, createdId, venueIds);
+    } catch (err) {
+      console.error("setEmployeeVenues failed", err);
+    }
+  }
+
   revalidatePath("/employees");
   return { ok: true };
 }
@@ -172,6 +183,14 @@ export async function updateEmployeeAction(
     await setEmployeePositions(parsed.data.id, positionIds);
   } catch (err) {
     console.error("setEmployeePositions failed", err);
+  }
+
+  // Venue eligibility — same diff-based sync. Empty list = clear all.
+  const venueIds = formData.getAll("venue_ids").map(String);
+  try {
+    await setEmployeeVenues(workspace, parsed.data.id, venueIds);
+  } catch (err) {
+    console.error("setEmployeeVenues failed", err);
   }
 
   revalidatePath("/employees");

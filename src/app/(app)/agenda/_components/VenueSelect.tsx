@@ -22,9 +22,16 @@ import type { VenueRow } from "@/modules/venues";
 export function VenueSelect({
   venues,
   initialVenueId,
+  onSelectedIdChange,
 }: {
   venues: VenueRow[];
   initialVenueId?: string | null;
+  /**
+   * Fires whenever the selection changes. Parent forms use this to
+   * pass the resulting venue id into EmployeeSelect for the
+   * eligible-employees filter.
+   */
+  onSelectedIdChange?: (venueId: string) => void;
 }) {
   const [selected, setSelected] = useState<string>(initialVenueId ?? "");
   const [newName, setNewName] = useState("");
@@ -32,11 +39,18 @@ export function VenueSelect({
 
   const isNew = selected === "__new__";
 
+  function handleChange(next: string) {
+    setSelected(next);
+    // Only emit a real venue id (uuid). "__new__" and "" both mean
+    // "no venue" for filtering purposes.
+    onSelectedIdChange?.(next === "__new__" ? "" : next);
+  }
+
   return (
     <div className="space-y-2">
       <select
         value={selected}
-        onChange={(e) => setSelected(e.target.value)}
+        onChange={(e) => handleChange(e.target.value)}
         className="w-full rounded border border-neutral-300 px-2 py-1.5 text-sm bg-white"
       >
         <option value="">— No venue —</option>

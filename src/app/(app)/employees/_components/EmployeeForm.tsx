@@ -4,9 +4,11 @@ import { useState, type FormEvent } from "react";
 import { createEmployeeAction, updateEmployeeAction } from "../actions";
 import type { WorkspaceMemberRow } from "@/modules/auth";
 import type { PositionRow } from "@/modules/positions";
+import type { VenueRow } from "@/modules/venues";
 import { APP_ROLES } from "@/server/policies/roles";
 import { MEMBER_STATUSES } from "@/modules/auth";
 import { PositionsMultiSelect } from "./PositionsMultiSelect";
+import { VenuesMultiSelect } from "./VenuesMultiSelect";
 
 const ROLE_LABEL: Record<string, string> = {
   owner: "Owner — full workspace authority",
@@ -31,10 +33,14 @@ export function EmployeeForm({
   existing,
   allPositions = [],
   selectedPositionIds = [],
+  allVenues = [],
+  selectedVenueIds = [],
 }: {
   existing?: WorkspaceMemberRow;
   allPositions?: PositionRow[];
   selectedPositionIds?: string[];
+  allVenues?: VenueRow[];
+  selectedVenueIds?: string[];
 }) {
   const isEdit = Boolean(existing);
   const [email, setEmail] = useState(existing?.email ?? "");
@@ -207,6 +213,22 @@ export function EmployeeForm({
           allPositions={allPositions}
           initialSelectedIds={selectedPositionIds}
           name="position_ids"
+        />
+      </div>
+
+      <div>
+        <span className="block text-xs font-medium text-neutral-700 mb-1">
+          Venues
+        </span>
+        <p className="text-[11px] text-slate-500 mb-2">
+          Pick the venues this person is strong at. When you create a
+          booking at one of these venues, they&rsquo;ll show up in the
+          Assigned-to dropdown — others won&rsquo;t.
+        </p>
+        <VenuesMultiSelect
+          allVenues={allVenues}
+          initialSelectedIds={selectedVenueIds}
+          name="venue_ids"
         />
       </div>
 

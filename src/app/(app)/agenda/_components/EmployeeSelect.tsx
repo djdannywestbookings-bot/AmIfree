@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import type { WorkspaceMemberRow } from "@/modules/auth";
 
 /**
@@ -12,19 +12,25 @@ import type { WorkspaceMemberRow } from "@/modules/auth";
  *   2. Unassigned
  *   3. Other employees (alphabetical, pending invites tagged)
  *
- * If `currentMemberId` is omitted, the list reverts to the legacy
- * order (Unassigned → all employees) so the component stays usable
- * in surfaces that don't have a current-member context.
+ * Venue eligibility filter:
+ *   When `eligibleEmployeeIds` is provided AND non-null, only employees
+ *   in that list (plus the current user, who's always available) appear
+ *   in the dropdown. A small "Show all" toggle lets the user override
+ *   the filter for one-off cases.
+ *
+ *   When `eligibleEmployeeIds` is null/undefined, no filter is applied.
  */
 export function EmployeeSelect({
   employees,
   initialAssignedId,
   currentMemberId,
+  eligibleEmployeeIds,
   name = "assigned_employee_id",
 }: {
   employees: WorkspaceMemberRow[];
   initialAssignedId?: string | null;
   currentMemberId?: string | null;
+  eligibleEmployeeIds?: string[] | null;
   name?: string;
 }) {
   // Default selection: prefer initialAssignedId (edit case). If absent,
@@ -39,18 +45,47 @@ export function EmployeeSelect({
       : "";
 
   const [value, setValue] = useState(defaultValue);
+  const [showAll, setShowAll] = useState(false);
+
+  // Reset the show-all override whenever the venue filter changes,
+  // so changing venue re-applies the eligibility filter cleanly.
+  const eligibilityKey = eligibleEmployeeIds?.join(",") ?? "__none__";
+  useEffect(() => {
+    setShowAll(false);
+  }, [eligibilityKey]);
+
+  const filterActive =
+    !showAll &&
+    eligibleEmployeeIds !== undefined &&
+    eligibleEmployeeIds !== null;
+
+  const filtered = useMemo(() => {
+    if (!filterActive) return employees;
+    const allowed = new Set(eligibleEmployeeIds ?? []);
+    // The current user is always allowed (they can take a gig anywhere).
+    if (currentMemberId) allowed.add(currentMemberId);
+    return employees.filter((e) => allowed.has(e.id));
+  }, [employees, eligibleEmployeeIds, currentMemberId, filterActive]);
 
   const ordered = useMemo(() => {
     const me =
-      currentMemberId && employees.find((e) => e.id === currentMemberId);
-    const rest = employees.filter((e) => e.id !== currentMemberId);
+      currentMemberId && filtered.find((e) => e.id === currentMemberId);
+    const rest = filtered.filter((e) => e.id !== currentMemberId);
     rest.sort((a, b) => {
       const an = (a.name || a.email || "").toLowerCase();
       const bn = (b.name || b.email || "").toLowerCase();
       return an.localeCompare(bn);
     });
     return { me, rest };
-  }, [employees, currentMemberId]);
+  }, [filtered, currentMemberId]);
+
+  // If the previously-selected assignee was filtered out, surface them
+  // anyway as a "current selection (not eligible)" option so the form
+  // doesn't silently drop the value.
+  const selectedNotInList =
+    value && !filtered.some((e) => e.id === value)
+      ? employees.find((e) => e.id === value) ?? null
+      : null;
 
   return (
     <div className="space-y-1">
@@ -75,7 +110,25 @@ export function EmployeeSelect({
             </option>
           );
         })}
+        {selectedNotInList && (
+          <option value={selectedNotInList.id}>
+            {selectedNotInList.name || selectedNotInList.email || "(no name)"}{" "}
+            · not eligible at this venue
+          </option>
+        )}
       </select>
+      {filterActive && (
+        <div className="flex items-center justify-between gap-2 text-[11px] text-slate-500">
+          <span>Filtered to employees eligible at this venue.</span>
+          <button
+            type="button"
+            onClick={() => setShowAll(true)}
+            className="text-indigo-600 hover:text-indigo-700 underline-offset-2 hover:underline"
+          >
+            Show all
+          </button>
+        </div>
+      )}
       <input type="hidden" name={name} value={value} />
     </div>
   );

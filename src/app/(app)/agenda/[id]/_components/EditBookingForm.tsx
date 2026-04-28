@@ -73,11 +73,13 @@ export function EditBookingForm({
   venues,
   employees,
   currentMemberId,
+  venueEmployeeMap = {},
 }: {
   booking: BookingRow;
   venues: VenueRow[];
   employees: WorkspaceMemberRow[];
   currentMemberId?: string | null;
+  venueEmployeeMap?: Record<string, string[]>;
 }) {
   const initialDateTime = splitIsoToDateAndTime(booking.start_at);
 
@@ -98,6 +100,14 @@ export function EditBookingForm({
   const [location, setLocation] = useState(booking.location ?? "");
   const [pay, setPay] = useState(booking.pay ?? "");
   const [notes, setNotes] = useState(booking.notes ?? "");
+  const [selectedVenueId, setSelectedVenueId] = useState<string>(
+    booking.venue_id ?? "",
+  );
+
+  // Narrow the assignee dropdown by the currently-selected venue.
+  const eligibleEmployeeIds: string[] | null = selectedVenueId
+    ? venueEmployeeMap[selectedVenueId] ?? []
+    : null;
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -227,7 +237,11 @@ export function EditBookingForm({
           <span className="block text-xs font-medium text-neutral-700 mb-1">
             Venue
           </span>
-          <VenueSelect venues={venues} initialVenueId={booking.venue_id} />
+          <VenueSelect
+            venues={venues}
+            initialVenueId={booking.venue_id}
+            onSelectedIdChange={setSelectedVenueId}
+          />
         </div>
         <div>
           <span className="block text-xs font-medium text-neutral-700 mb-1">
@@ -237,6 +251,7 @@ export function EditBookingForm({
             employees={employees}
             initialAssignedId={booking.assigned_employee_id}
             currentMemberId={currentMemberId}
+            eligibleEmployeeIds={eligibleEmployeeIds}
           />
         </div>
       </div>

@@ -5,6 +5,7 @@ import {
   listVenues,
   listAssignableEmployees,
   getCurrentMemberId,
+  listVenueEmployeeMap,
 } from "@/server/services";
 import { EditBookingForm } from "../_components/EditBookingForm";
 
@@ -22,12 +23,14 @@ export default async function EditBookingPage({
 }) {
   const workspace = await requireWorkspace();
   const { id } = await params;
-  const [booking, venues, employees, currentMemberId] = await Promise.all([
-    getBookingById(workspace, id),
-    listVenues(workspace),
-    listAssignableEmployees(workspace),
-    getCurrentMemberId(workspace),
-  ]);
+  const [booking, venues, employees, currentMemberId, venueEmployeeMap] =
+    await Promise.all([
+      getBookingById(workspace, id),
+      listVenues(workspace),
+      listAssignableEmployees(workspace),
+      getCurrentMemberId(workspace),
+      listVenueEmployeeMap(workspace),
+    ]);
 
   if (!booking) {
     notFound();
@@ -49,6 +52,7 @@ export default async function EditBookingPage({
         venues={venues}
         employees={employees}
         currentMemberId={currentMemberId}
+        venueEmployeeMap={venueEmployeeMap}
       />
     </main>
   );
