@@ -72,3 +72,8 @@ export {
   listPunchesForMember,
   listAllPunches,
 } from "./punches";
+export {
+  setMemberAvailabilityToken,
+  getShareTargetByToken,
+  listBusyBlocksForMember,
+} from "./share";

@@ -55,6 +55,9 @@ export const workspaceMemberRowSchema = z.object({
     .union([z.literal(1), z.literal(3), z.literal(6), z.literal(12)])
     .nullable()
     .default(null),
+  // Migration 0016 — public share token for /share/[token]. Treat as
+  // a secret. Null until the user generates one.
+  availability_token: z.string().nullable().default(null),
   status: z.enum(MEMBER_STATUSES).default("joined"),
   invited_at: z.string().datetime({ offset: true }).nullable().default(null),
   joined_at: z.string().datetime({ offset: true }).nullable().default(null),
