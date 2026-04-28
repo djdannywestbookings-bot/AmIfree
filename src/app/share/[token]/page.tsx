@@ -5,6 +5,7 @@ import {
   listBusyBlocksForMember,
 } from "@/server/services";
 import { AvailabilityView } from "./_components/AvailabilityView";
+import { InquiryForm } from "./_components/InquiryForm";
 
 /**
  * /share/[token] — public availability page.
@@ -78,6 +79,10 @@ export default async function PublicAvailabilityPage({
             }))}
             timezone={workspace.timezone}
           />
+        </div>
+
+        <div className="mt-10">
+          <InquiryForm token={token} recipientName={displayName} />
         </div>
 
         <p className="mt-10 text-xs text-slate-500 text-center">

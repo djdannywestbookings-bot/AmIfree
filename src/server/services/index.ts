@@ -81,3 +81,11 @@ export {
   extractVenueFromMapsUrl,
   type VenueImportResult,
 } from "./venue-import";
+export {
+  submitInquiry,
+  listInquiriesForCurrentMember,
+  countPendingInquiriesForCurrentMember,
+  getInquiryById,
+  setInquiryStatus,
+  confirmInquiryAsBooking,
+} from "./inquiries";

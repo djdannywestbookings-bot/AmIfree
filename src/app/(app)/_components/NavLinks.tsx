@@ -7,14 +7,16 @@ import { usePathname } from "next/navigation";
  * NavLinks — the horizontal app nav rendered inside (app)/layout.tsx.
  *
  * Lives as a client component so it can read usePathname() and
- * highlight the currently active section. The list of links itself is
- * defined here (single source of truth).
+ * highlight the currently active section. Links + per-link badge
+ * counts are passed in from the server layout (single source of
+ * truth for the route list lives here, but counts come from the
+ * server because they require DB lookups).
  *
  * Active rule: pathname matches the link's href exactly OR is a
  * sub-route under it (so /agenda/abc-123 still lights the Schedule
  * link).
  */
-const LINKS: Array<{ href: string; label: string }> = [
+const LINKS: Array<{ href: string; label: string; badgeKey?: string }> = [
   { href: "/calendar", label: "Calendar" },
   { href: "/my-calendar", label: "My Calendar" },
   { href: "/agenda", label: "Schedule" },
@@ -22,32 +24,51 @@ const LINKS: Array<{ href: string; label: string }> = [
   { href: "/employees", label: "Employees" },
   { href: "/positions", label: "Positions" },
   { href: "/intake", label: "Intake" },
+  { href: "/inquiries", label: "Inquiries", badgeKey: "inquiries" },
   { href: "/timesheet", label: "Timesheet" },
   { href: "/reports", label: "Reports" },
   { href: "/settings", label: "Settings" },
 ];
 
-export function NavLinks() {
+export function NavLinks({
+  badges = {},
+}: {
+  badges?: Record<string, number>;
+}) {
   const pathname = usePathname();
 
   return (
     <div className="flex gap-1 flex-1 overflow-x-auto -mx-1 px-1">
-      {LINKS.map(({ href, label }) => {
+      {LINKS.map(({ href, label, badgeKey }) => {
         const active =
           pathname === href || pathname.startsWith(`${href}/`);
+        const badge = badgeKey ? badges[badgeKey] ?? 0 : 0;
         return (
           <Link
             key={href}
             href={href}
             aria-current={active ? "page" : undefined}
             className={[
-              "px-2.5 py-1.5 rounded-md whitespace-nowrap transition-colors text-sm",
+              "px-2.5 py-1.5 rounded-md whitespace-nowrap transition-colors text-sm inline-flex items-center gap-1.5",
               active
                 ? "bg-indigo-50 text-indigo-700 font-medium ring-1 ring-indigo-100"
                 : "text-slate-600 hover:bg-slate-100 hover:text-indigo-700",
             ].join(" ")}
           >
-            {label}
+            <span>{label}</span>
+            {badge > 0 && (
+              <span
+                className={[
+                  "inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full text-[10px] font-semibold tabular-nums",
+                  active
+                    ? "bg-indigo-600 text-white"
+                    : "bg-rose-500 text-white",
+                ].join(" ")}
+                aria-label={`${badge} pending`}
+              >
+                {badge > 99 ? "99+" : badge}
+              </span>
+            )}
           </Link>
         );
       })}

@@ -1,17 +1,24 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState } from "react";
 
 /**
- * AvailabilityView — anonymized busy/free calendar for /share/[token].
+ * AvailabilityView — busy-only calendar for /share/[token].
  *
  * The parent page passes only the time fields needed to render busy
  * blocks (start_at, end_at, all_day, service_day). This component
- * never sees titles, venues, pay, or notes — and never asks for them.
+ * never sees titles, venues, pay, or notes.
  *
- * Free days render plain. Busy days show a red dot + "Busy" pill, and
- * clicking opens a small modal that shows the busy time ranges for
- * that day (still anonymized: just "4:00p – 9:00p Busy").
+ * UX choice: free days render plain. We don't label anything "Free"
+ * — the absence of a busy marker IS the "free" signal. That keeps
+ * the recipient from inferring anything about whether a free day is
+ * "personal," "buffer," or just unscheduled.
+ *
+ * Busy days show the busy time range inline on the cell:
+ *   10p–2a Busy
+ *
+ * If a day has multiple busy blocks the cell shows the count and the
+ * user can tap to see all ranges.
  */
 
 type Block = {
@@ -85,6 +92,31 @@ function buildMonth(
     });
   }
   return cells;
+}
+
+/**
+ * Format a single block's time range for inline display.
+ * "10p–2a", "All day", "Time TBD".
+ */
+function formatBlockRange(b: Block): string {
+  if (b.all_day) return "All day";
+  if (!b.start_at) return "Time TBD";
+  const startStr = formatShortTime(new Date(b.start_at));
+  if (!b.end_at) return `${startStr} →`;
+  const endStr = formatShortTime(new Date(b.end_at));
+  return `${startStr}–${endStr}`;
+}
+
+/** "10p", "2a", "12:30p". Compact mobile-friendly format. */
+function formatShortTime(d: Date): string {
+  const h = d.getHours();
+  const m = d.getMinutes();
+  const isPm = h >= 12;
+  let displayH = h % 12;
+  if (displayH === 0) displayH = 12;
+  const suffix = isPm ? "p" : "a";
+  if (m === 0) return `${displayH}${suffix}`;
+  return `${displayH}:${String(m).padStart(2, "0")}${suffix}`;
 }
 
 export function AvailabilityView({
@@ -163,15 +195,21 @@ export function AvailabilityView({
         ))}
         {cells.map((cell, i) => {
           const busy = cell.blocks.length > 0;
-          const interactive = cell.inMonth && !cell.isPast;
-          const Wrapper = busy && interactive ? "button" : "div";
+          const interactive = cell.inMonth && !cell.isPast && busy;
+          const Wrapper = interactive ? "button" : "div";
           const wrapperProps =
-            busy && interactive
+            interactive
               ? {
                   type: "button" as const,
                   onClick: () => setSelected(cell),
                 }
               : {};
+          // Pre-compute the busy summary line for this cell.
+          const summary = busy
+            ? cell.blocks.length === 1
+              ? formatBlockRange(cell.blocks[0])
+              : `${cell.blocks.length} busy blocks`
+            : null;
           return (
             <Wrapper
               key={i}
@@ -180,14 +218,12 @@ export function AvailabilityView({
                 "min-h-[80px] sm:min-h-[100px] p-2 flex flex-col items-start gap-1 text-left transition-colors",
                 cell.inMonth ? "bg-white" : "bg-slate-50/60 text-slate-300",
                 cell.isPast && cell.inMonth ? "bg-slate-50/40 text-slate-400" : "",
-                busy && interactive
-                  ? "hover:bg-slate-50 cursor-pointer"
-                  : "",
+                interactive ? "hover:bg-rose-50/60 cursor-pointer" : "",
               ].join(" ")}
               aria-label={
                 busy
                   ? `Busy on ${cell.date.toLocaleDateString()}`
-                  : `Available on ${cell.date.toLocaleDateString()}`
+                  : cell.date.toLocaleDateString()
               }
             >
               <span
@@ -200,20 +236,11 @@ export function AvailabilityView({
               >
                 {cell.date.getDate()}
               </span>
-              {cell.inMonth && !cell.isPast && (
-                <>
-                  {busy ? (
-                    <span className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-medium text-rose-700 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded-full">
-                      <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-                      Busy
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-medium text-emerald-700">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                      Free
-                    </span>
-                  )}
-                </>
+              {busy && cell.inMonth && (
+                <span className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-medium text-rose-700 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded-full max-w-full">
+                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
+                  <span className="truncate">{summary}</span>
+                </span>
               )}
             </Wrapper>
           );
@@ -234,16 +261,14 @@ export function AvailabilityView({
 
 function Legend() {
   return (
-    <div className="flex items-center gap-4 text-xs text-slate-500 pt-1 px-1">
-      <span className="inline-flex items-center gap-1.5">
-        <span className="w-2 h-2 rounded-full bg-emerald-500" />
-        Free
-      </span>
+    <div className="flex items-center gap-4 text-xs text-slate-500 pt-1 px-1 flex-wrap">
       <span className="inline-flex items-center gap-1.5">
         <span className="w-2 h-2 rounded-full bg-rose-500" />
-        Busy
+        Busy block
       </span>
-      <span className="text-slate-400">Click a busy day for time ranges.</span>
+      <span className="text-slate-400">
+        Empty days are open. Tap a busy day for the time range.
+      </span>
     </div>
   );
 }
@@ -256,13 +281,7 @@ function DayBusyModal({
   onClose: () => void;
 }) {
   // Escape closes.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  useEffectEscape(onClose);
 
   const dateLabel = day.date.toLocaleDateString(undefined, {
     weekday: "long",
@@ -271,20 +290,7 @@ function DayBusyModal({
     year: "numeric",
   });
 
-  const ranges = day.blocks.map((b) => {
-    if (b.all_day) return "All day";
-    if (!b.start_at) return "Time TBD";
-    const startStr = new Date(b.start_at).toLocaleTimeString(undefined, {
-      hour: "numeric",
-      minute: "2-digit",
-    });
-    if (!b.end_at) return startStr;
-    const endStr = new Date(b.end_at).toLocaleTimeString(undefined, {
-      hour: "numeric",
-      minute: "2-digit",
-    });
-    return `${startStr} – ${endStr}`;
-  });
+  const ranges = day.blocks.map(formatBlockRange);
 
   return (
     <div
@@ -303,7 +309,7 @@ function DayBusyModal({
               {dateLabel}
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              Busy {ranges.length === 1 ? "block" : "blocks"} on this day
+              {ranges.length === 1 ? "Busy block" : `${ranges.length} busy blocks`}
             </p>
           </div>
           <button
@@ -328,9 +334,20 @@ function DayBusyModal({
           ))}
         </ul>
         <footer className="px-5 py-3 border-t border-slate-200 bg-slate-50 text-xs text-slate-500">
-          To inquire about this date, reach out directly.
+          Use the inquiry form below to reach out about another date.
         </footer>
       </div>
     </div>
   );
+}
+
+import { useEffect } from "react";
+function useEffectEscape(onClose: () => void) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
 }

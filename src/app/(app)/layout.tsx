@@ -2,6 +2,10 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { getCurrentActor } from "@/server/policies";
+import {
+  requireWorkspace,
+  countPendingInquiriesForCurrentMember,
+} from "@/server/services";
 import { NavLinks } from "./_components/NavLinks";
 import { signOutAction } from "./_actions/sign-out";
 
@@ -29,6 +33,17 @@ export default async function AppLayout({
     redirect("/login");
   }
 
+  // Pull a few server-side counts the nav badges need. Best-effort —
+  // if any throws (e.g., the inquiries table isn't there yet on a
+  // pre-migration env), default to 0 so the nav still renders.
+  let pendingInquiries = 0;
+  try {
+    const workspace = await requireWorkspace();
+    pendingInquiries = await countPendingInquiriesForCurrentMember(workspace);
+  } catch {
+    /* keep nav rendering even if the lookup fails */
+  }
+
   return (
     <div className="min-h-dvh flex flex-col">
       <header className="bg-white/85 backdrop-blur-sm border-b border-slate-200 sticky top-0 z-20 shadow-card">
@@ -42,7 +57,7 @@ export default async function AppLayout({
             <span className="text-teal-500">Free</span>
           </Link>
 
-          <NavLinks />
+          <NavLinks badges={{ inquiries: pendingInquiries }} />
 
           {/* Identity + persistent log-out, always pinned to the right. */}
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
