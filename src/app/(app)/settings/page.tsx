@@ -6,6 +6,7 @@ import {
 import { ProfileSection } from "./_components/ProfileSection";
 import { PasswordSection } from "./_components/PasswordSection";
 import { ServiceDaySection } from "./_components/ServiceDaySection";
+import { CalendarPreferencesSection } from "./_components/CalendarPreferencesSection";
 import { CalendarSyncSection } from "./_components/CalendarSyncSection";
 import { TimezoneSection } from "./_components/TimezoneSection";
 
@@ -35,6 +36,10 @@ export default async function SettingsPage() {
       <ServiceDaySection
         initialMode={workspace.service_day_mode}
         initialCutoffHour={workspace.nightlife_cutoff_hour}
+      />
+
+      <CalendarPreferencesSection
+        initialView={member?.default_calendar_view ?? 1}
       />
 
       <TimezoneSection initialTimezone={workspace.timezone} />

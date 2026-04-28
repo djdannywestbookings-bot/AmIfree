@@ -150,18 +150,19 @@ function shiftLabel(
 
 /**
  * Read the persisted view + anchor month from the URL search params.
- * Falls back to today's month / 1-month view if anything is missing or
- * malformed. Runs lazily inside useState so it only fires on mount and
- * is SSR-safe (window guard).
+ * If the URL has no `view` param, fall back to the user's saved
+ * preference (defaultView). If both are missing, falls back to 1-month
+ * at today's month. Runs lazily inside useState so it only fires on
+ * mount and is SSR-safe (window guard).
  */
-function readStateFromUrl(): {
+function readStateFromUrl(defaultView: ViewMode): {
   view: ViewMode;
   year: number;
   month: number;
 } {
   const today = new Date();
   const fallback = {
-    view: 1 as ViewMode,
+    view: defaultView,
     year: today.getFullYear(),
     month: today.getMonth(),
   };
@@ -176,7 +177,7 @@ function readStateFromUrl(): {
   const view: ViewMode =
     viewNum === 1 || viewNum === 3 || viewNum === 6 || viewNum === 12
       ? (viewNum as ViewMode)
-      : 1;
+      : defaultView;
 
   const year = yRaw && /^\d{4}$/.test(yRaw) ? Number(yRaw) : fallback.year;
   const monthNum = mRaw ? Number(mRaw) : NaN;
@@ -191,12 +192,16 @@ function readStateFromUrl(): {
 export function CalendarMonthGrid({
   shifts,
   venues,
+  defaultView = 1,
 }: {
   shifts: BookingRow[];
   venues: VenueRow[];
+  /** User's saved preference for the initial view. Used when URL has
+   *  no ?view=... param. */
+  defaultView?: ViewMode;
 }) {
   const today = new Date();
-  const initial = readStateFromUrl();
+  const initial = readStateFromUrl(defaultView);
   const [viewYear, setViewYear] = useState(initial.year);
   const [viewMonth, setViewMonth] = useState(initial.month);
   const [view, setView] = useState<ViewMode>(initial.view);
@@ -209,8 +214,12 @@ export function CalendarMonthGrid({
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
+    // "Default" = user's preferred view at the current month. When
+    // state matches, we strip params so the URL stays clean for the
+    // common case AND so a fresh visit picks up the user's saved
+    // preference next time.
     const isDefault =
-      view === 1 &&
+      view === defaultView &&
       viewYear === today.getFullYear() &&
       viewMonth === today.getMonth();
     if (isDefault) {
@@ -225,12 +234,8 @@ export function CalendarMonthGrid({
     const qs = params.toString();
     const url = qs ? `${window.location.pathname}?${qs}` : window.location.pathname;
     window.history.replaceState(null, "", url);
-    // We intentionally exclude `today` from deps — it's stable enough
-    // for this purpose (the page reloads at midnight if the user keeps
-    // it open, but an unstaged once-per-day skew on the "default" check
-    // is harmless).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [view, viewYear, viewMonth]);
+  }, [view, viewYear, viewMonth, defaultView]);
   // Day-detail modal state — set when the user taps a day cell.
   const [selectedDay, setSelectedDay] = useState<{
     date: Date;

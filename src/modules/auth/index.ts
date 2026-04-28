@@ -50,6 +50,11 @@ export const workspaceMemberRowSchema = z.object({
   phone: z.string().nullable().default(null),
   // Phase added with migration 0014 — free-form home/mailing address.
   home_address: z.string().nullable().default(null),
+  // Migration 0015 — preferred /calendar default view: 1, 3, 6, or 12.
+  default_calendar_view: z
+    .union([z.literal(1), z.literal(3), z.literal(6), z.literal(12)])
+    .nullable()
+    .default(null),
   status: z.enum(MEMBER_STATUSES).default("joined"),
   invited_at: z.string().datetime({ offset: true }).nullable().default(null),
   joined_at: z.string().datetime({ offset: true }).nullable().default(null),
