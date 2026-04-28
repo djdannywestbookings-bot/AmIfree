@@ -4,6 +4,7 @@ import {
   getCurrentMember,
 } from "@/server/services";
 import { ProfileSection } from "./_components/ProfileSection";
+import { PasswordSection } from "./_components/PasswordSection";
 import { ServiceDaySection } from "./_components/ServiceDaySection";
 import { CalendarSyncSection } from "./_components/CalendarSyncSection";
 import { TimezoneSection } from "./_components/TimezoneSection";
@@ -28,6 +29,8 @@ export default async function SettingsPage() {
         initialPhone={member?.phone ?? ""}
         initialHomeAddress={member?.home_address ?? ""}
       />
+
+      <PasswordSection />
 
       <ServiceDaySection
         initialMode={workspace.service_day_mode}

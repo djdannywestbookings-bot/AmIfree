@@ -27,6 +27,9 @@ const profileSchema = z.object({
   email: z.string().trim().toLowerCase().email("Enter a valid email.").optional(),
   phone: z.string().trim().max(40).optional(),
   home_address: z.string().trim().max(500).optional(),
+  // When email changes, the current password is required as a
+  // security check. Empty/missing for non-email updates.
+  current_password: z.string().optional(),
 });
 
 export type UpdateProfileResult =
@@ -50,6 +53,7 @@ export async function updateProfileAction(
     email: formData.get("email") || undefined,
     phone: formData.get("phone") || undefined,
     home_address: formData.get("home_address") || undefined,
+    current_password: formData.get("current_password") || undefined,
   });
   if (!parsed.success) {
     return {
@@ -57,7 +61,7 @@ export async function updateProfileAction(
       error: parsed.error.issues[0]?.message ?? "Invalid input.",
     };
   }
-  const { name, email, phone, home_address } = parsed.data;
+  const { name, email, phone, home_address, current_password } = parsed.data;
 
   const admin = createAdminClient();
 
@@ -91,13 +95,39 @@ export async function updateProfileAction(
     }
   }
 
-  // Email change goes through Supabase Auth — they send a confirm
-  // link, the change activates after the user clicks it. We DON'T
-  // pre-update workspace_members.email; that's mirrored from auth
-  // once confirmation lands.
+  // Email change is a security-sensitive operation. We require the
+  // user's current password to confirm it's actually them at the
+  // keyboard, then hand off to Supabase Auth which sends a
+  // confirmation link to the new address (and to the old one if
+  // "Secure email change" is enabled in the dashboard). The change
+  // activates only after the user clicks the link.
   let emailChange: { sentTo: string } | undefined;
-  if (email && email !== (member.email ?? "").toLowerCase()) {
+  const currentEmail = (member.email ?? "").toLowerCase();
+  if (email && email !== currentEmail) {
+    if (!current_password || current_password.length < 1) {
+      return {
+        ok: false,
+        error: "Enter your current password to change your email.",
+      };
+    }
+
+    // Verify the password by attempting a fresh sign-in. The
+    // resulting session is the same user, so it cleanly replaces the
+    // existing cookie. OAuth-only users (no password set) will fail
+    // here — surface a helpful pointer.
     const supabase = await createServerClient();
+    const { error: verifyErr } = await supabase.auth.signInWithPassword({
+      email: currentEmail,
+      password: current_password,
+    });
+    if (verifyErr) {
+      return {
+        ok: false,
+        error:
+          "Current password didn't match. If you signed in with Apple/Google and haven't set a password yet, use Forgot password first.",
+      };
+    }
+
     const { error: emErr } = await supabase.auth.updateUser({ email });
     if (emErr) {
       return {

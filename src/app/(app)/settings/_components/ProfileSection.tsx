@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import { updateProfileAction } from "../profile-actions";
 
 /**
@@ -32,10 +32,18 @@ export function ProfileSection({
   const [email, setEmail] = useState(initialEmail);
   const [phone, setPhone] = useState(initialPhone);
   const [homeAddress, setHomeAddress] = useState(initialHomeAddress);
+  const [currentPassword, setCurrentPassword] = useState("");
 
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+
+  // The current-password challenge appears only when the email has
+  // actually changed from the value loaded from the server.
+  const emailChanged = useMemo(
+    () => email.trim().toLowerCase() !== initialEmail.trim().toLowerCase(),
+    [email, initialEmail],
+  );
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -48,6 +56,7 @@ export function ProfileSection({
     form.set("email", email);
     form.set("phone", phone);
     form.set("home_address", homeAddress);
+    if (emailChanged) form.set("current_password", currentPassword);
 
     const result = await updateProfileAction(form);
     setPending(false);
@@ -60,6 +69,7 @@ export function ProfileSection({
       setMessage(
         `Profile saved. Confirm your new email at ${result.emailChange.sentTo} — the change takes effect after you click the link.`,
       );
+      setCurrentPassword("");
     } else {
       setMessage("Profile saved.");
     }
@@ -108,6 +118,38 @@ export function ProfileSection({
             </span>
           </label>
         </div>
+
+        {emailChanged && (
+          <div className="rounded-md border border-amber-200 bg-amber-50 p-3 space-y-2 animate-fade-in">
+            <p className="text-xs text-amber-800 leading-relaxed">
+              <strong>Security check.</strong> Enter your current password
+              to confirm this email change.
+            </p>
+            <label className="block">
+              <span className="block text-xs font-medium text-slate-700 mb-1">
+                Current password
+              </span>
+              <input
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                autoComplete="current-password"
+                className="input"
+                required
+              />
+              <span className="block text-[11px] text-slate-500 mt-1">
+                Signed in with Apple or Google?{" "}
+                <a
+                  href="/forgot-password"
+                  className="text-indigo-600 hover:text-indigo-700 underline-offset-2 hover:underline"
+                >
+                  Set a password first
+                </a>
+                .
+              </span>
+            </label>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <label className="block">
