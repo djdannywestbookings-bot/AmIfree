@@ -5,6 +5,7 @@ import type { BookingRow } from "@/modules/bookings";
 import type { VenueRow } from "@/modules/venues";
 import type { WorkspaceMemberRow } from "@/modules/auth";
 import { deleteFromEditAction } from "../actions";
+import { buildMapsUrl } from "@/lib/maps-link";
 
 /**
  * Read-only Shift detail view.
@@ -74,6 +75,15 @@ export function ShiftDetailView({
       : venue.name
     : booking.location ?? null;
 
+  // Build a maps URL for the venue (or free-form location). One tap
+  // opens Apple Maps on iOS via the system handler, Google Maps on
+  // Android, or a desktop browser.
+  const venueMapsUrl = venue?.address
+    ? buildMapsUrl(venue.name, venue.address)
+    : booking.location
+    ? buildMapsUrl(booking.location)
+    : null;
+
   const assigneeLabel = assignee
     ? assignee.name || assignee.email || "(no name)"
     : null;
@@ -99,7 +109,29 @@ export function ShiftDetailView({
       <dl className="px-5 sm:px-6 py-5 space-y-4 text-sm">
         <Row label="Time" value={timeLabel} mono />
 
-        {venueLabel && <Row label="Venue" value={venueLabel} />}
+        {venueLabel && (
+          <div className="grid grid-cols-[6.5rem_1fr] gap-3 items-baseline">
+            <dt className="text-slate-500 text-xs font-medium uppercase tracking-wider">
+              Venue
+            </dt>
+            <dd className="text-slate-900 break-words">
+              <span>{venueLabel}</span>
+              {venueMapsUrl && (
+                <>
+                  {" · "}
+                  <a
+                    href={venueMapsUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-indigo-600 hover:text-indigo-700 text-xs underline-offset-2 hover:underline whitespace-nowrap"
+                  >
+                    Open in Maps ↗
+                  </a>
+                </>
+              )}
+            </dd>
+          </div>
+        )}
 
         {assigneeLabel && <Row label="Assigned to" value={assigneeLabel} />}
 

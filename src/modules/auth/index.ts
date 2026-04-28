@@ -48,8 +48,13 @@ export const workspaceMemberRowSchema = z.object({
   email: z.string().email().nullable().default(null),
   name: z.string().nullable().default(null),
   phone: z.string().nullable().default(null),
-  // Phase added with migration 0014 — free-form home/mailing address.
+  // Phase added with migration 0014 — free-form home/mailing address
+  // (street line). Migration 0017 split city/state/zip into separate
+  // fields below.
   home_address: z.string().nullable().default(null),
+  home_city: z.string().nullable().default(null),
+  home_state: z.string().nullable().default(null),
+  home_zip: z.string().nullable().default(null),
   // Migration 0015 — preferred /calendar default view: 1, 3, 6, or 12.
   default_calendar_view: z
     .union([z.literal(1), z.literal(3), z.literal(6), z.literal(12)])

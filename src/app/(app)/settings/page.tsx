@@ -3,6 +3,7 @@ import {
   requireWorkspace,
   getCurrentMember,
 } from "@/server/services";
+import { createClient as createServerClient } from "@/lib/supabase/server";
 import { ProfileSection } from "./_components/ProfileSection";
 import { PasswordSection } from "./_components/PasswordSection";
 import { ServiceDaySection } from "./_components/ServiceDaySection";
@@ -13,6 +14,15 @@ import { TimezoneSection } from "./_components/TimezoneSection";
 export default async function SettingsPage() {
   const workspace = await requireWorkspace();
   const member = await getCurrentMember(workspace);
+
+  // The workspace owner's email lives on auth.users, not always on
+  // the workspace_members row — fetch it directly so the profile
+  // form always pre-fills accurately.
+  const supabase = await createServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const authEmail = user?.email ?? "";
 
   // Build the absolute base URL for the iCal feed link.
   const h = await headers();
@@ -26,9 +36,12 @@ export default async function SettingsPage() {
 
       <ProfileSection
         initialName={member?.name ?? workspace.name ?? ""}
-        initialEmail={member?.email ?? ""}
+        initialEmail={member?.email ?? authEmail}
         initialPhone={member?.phone ?? ""}
         initialHomeAddress={member?.home_address ?? ""}
+        initialHomeCity={member?.home_city ?? ""}
+        initialHomeState={member?.home_state ?? ""}
+        initialHomeZip={member?.home_zip ?? ""}
       />
 
       <PasswordSection />

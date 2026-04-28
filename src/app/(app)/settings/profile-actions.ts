@@ -27,6 +27,9 @@ const profileSchema = z.object({
   email: z.string().trim().toLowerCase().email("Enter a valid email.").optional(),
   phone: z.string().trim().max(40).optional(),
   home_address: z.string().trim().max(500).optional(),
+  home_city: z.string().trim().max(120).optional(),
+  home_state: z.string().trim().max(60).optional(),
+  home_zip: z.string().trim().max(20).optional(),
   // When email changes, the current password is required as a
   // security check. Empty/missing for non-email updates.
   current_password: z.string().optional(),
@@ -53,6 +56,9 @@ export async function updateProfileAction(
     email: formData.get("email") || undefined,
     phone: formData.get("phone") || undefined,
     home_address: formData.get("home_address") || undefined,
+    home_city: formData.get("home_city") || undefined,
+    home_state: formData.get("home_state") || undefined,
+    home_zip: formData.get("home_zip") || undefined,
     current_password: formData.get("current_password") || undefined,
   });
   if (!parsed.success) {
@@ -61,7 +67,16 @@ export async function updateProfileAction(
       error: parsed.error.issues[0]?.message ?? "Invalid input.",
     };
   }
-  const { name, email, phone, home_address, current_password } = parsed.data;
+  const {
+    name,
+    email,
+    phone,
+    home_address,
+    home_city,
+    home_state,
+    home_zip,
+    current_password,
+  } = parsed.data;
 
   const admin = createAdminClient();
 
@@ -71,6 +86,9 @@ export async function updateProfileAction(
   if (name !== undefined) memberPatch.name = name || null;
   if (phone !== undefined) memberPatch.phone = phone || null;
   if (home_address !== undefined) memberPatch.home_address = home_address || null;
+  if (home_city !== undefined) memberPatch.home_city = home_city || null;
+  if (home_state !== undefined) memberPatch.home_state = home_state || null;
+  if (home_zip !== undefined) memberPatch.home_zip = home_zip || null;
 
   if (Object.keys(memberPatch).length > 0) {
     const { error: memErr } = await admin
