@@ -148,6 +148,46 @@ function shiftLabel(
  * Main component
  * -------------------------------------------------------------------------- */
 
+/**
+ * Read the persisted view + anchor month from the URL search params.
+ * Falls back to today's month / 1-month view if anything is missing or
+ * malformed. Runs lazily inside useState so it only fires on mount and
+ * is SSR-safe (window guard).
+ */
+function readStateFromUrl(): {
+  view: ViewMode;
+  year: number;
+  month: number;
+} {
+  const today = new Date();
+  const fallback = {
+    view: 1 as ViewMode,
+    year: today.getFullYear(),
+    month: today.getMonth(),
+  };
+  if (typeof window === "undefined") return fallback;
+
+  const params = new URLSearchParams(window.location.search);
+  const viewRaw = params.get("view");
+  const yRaw = params.get("y");
+  const mRaw = params.get("m");
+
+  const viewNum = viewRaw ? Number(viewRaw) : NaN;
+  const view: ViewMode =
+    viewNum === 1 || viewNum === 3 || viewNum === 6 || viewNum === 12
+      ? (viewNum as ViewMode)
+      : 1;
+
+  const year = yRaw && /^\d{4}$/.test(yRaw) ? Number(yRaw) : fallback.year;
+  const monthNum = mRaw ? Number(mRaw) : NaN;
+  const month =
+    Number.isFinite(monthNum) && monthNum >= 0 && monthNum <= 11
+      ? monthNum
+      : fallback.month;
+
+  return { view, year, month };
+}
+
 export function CalendarMonthGrid({
   shifts,
   venues,
@@ -156,9 +196,41 @@ export function CalendarMonthGrid({
   venues: VenueRow[];
 }) {
   const today = new Date();
-  const [viewYear, setViewYear] = useState(today.getFullYear());
-  const [viewMonth, setViewMonth] = useState(today.getMonth());
-  const [view, setView] = useState<ViewMode>(1);
+  const initial = readStateFromUrl();
+  const [viewYear, setViewYear] = useState(initial.year);
+  const [viewMonth, setViewMonth] = useState(initial.month);
+  const [view, setView] = useState<ViewMode>(initial.view);
+
+  // Mirror state into the URL via replaceState so back-navigation from
+  // a downstream page (e.g. /agenda/[id]) restores the same view +
+  // anchor month the user had last. replaceState is preferable to push
+  // — every prev/next click would otherwise add a stack entry the user
+  // never asked for.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const isDefault =
+      view === 1 &&
+      viewYear === today.getFullYear() &&
+      viewMonth === today.getMonth();
+    if (isDefault) {
+      params.delete("view");
+      params.delete("y");
+      params.delete("m");
+    } else {
+      params.set("view", String(view));
+      params.set("y", String(viewYear));
+      params.set("m", String(viewMonth));
+    }
+    const qs = params.toString();
+    const url = qs ? `${window.location.pathname}?${qs}` : window.location.pathname;
+    window.history.replaceState(null, "", url);
+    // We intentionally exclude `today` from deps — it's stable enough
+    // for this purpose (the page reloads at midnight if the user keeps
+    // it open, but an unstaged once-per-day skew on the "default" check
+    // is harmless).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view, viewYear, viewMonth]);
   // Day-detail modal state — set when the user taps a day cell.
   const [selectedDay, setSelectedDay] = useState<{
     date: Date;
