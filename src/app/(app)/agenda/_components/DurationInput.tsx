@@ -3,26 +3,25 @@
 import { useState, useEffect } from "react";
 
 /**
- * Flexible duration input. Accepts:
- *   4            → 240 min (4 hours — most common case for a "4 hour gig")
- *   4h           → 240 min
- *   4 hours      → 240 min
+ * DurationInput — primary picker is a 1-hour-increment dropdown
+ * (1h..12h). For atypical durations users pick "Custom…" which
+ * reveals the original free-form text field that accepts:
+ *   4            → 240 min
+ *   4h / 4 hours → 240 min
  *   2.5h         → 150 min
- *   2h30m        → 150 min
- *   2hr 30m      → 150 min
- *   45m          → 45 min
- *   45 min       → 45 min
- *   90m          → 90 min
+ *   2h30m / 2h 30min → 150 min
+ *   45m / 45 min     → 45 min
  *
- * Returns minutes via onChange (a string of digits so it fits naturally
- * in a FormData hidden input). Empty string when cleared.
+ * Returns minutes as a digit string via onChange (suits FormData).
  */
+
+const PRESET_HOURS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+const CUSTOM_VALUE = "__custom";
 
 export function parseDuration(raw: string): number | null {
   const input = raw.trim().toLowerCase();
   if (input.length === 0) return null;
 
-  // 2h30m / 2hr 30m / 2h 30min / 2h
   const hmMatch = input.match(
     /^(\d+(?:\.\d+)?)\s*(?:h|hr|hrs|hours?)\s*(?:(\d+)\s*(?:m|min|mins|minutes?)?)?$/,
   );
@@ -33,14 +32,12 @@ export function parseDuration(raw: string): number | null {
     return total > 0 ? total : null;
   }
 
-  // 45m / 45min / 45 minutes
   const mMatch = input.match(/^(\d+)\s*(?:m|min|mins|minutes?)$/);
   if (mMatch) {
     const mins = Number(mMatch[1]);
     return mins > 0 ? mins : null;
   }
 
-  // Bare number → interpret as hours. "4" = 4 hours.
   const bare = input.match(/^(\d+(?:\.\d+)?)$/);
   if (bare) {
     const hours = Number(bare[1]);
@@ -60,6 +57,10 @@ export function formatDuration(minutes: number): string {
   return `${h}h${m}m`;
 }
 
+function isPresetMinutes(mins: number): boolean {
+  return mins > 0 && mins % 60 === 0 && PRESET_HOURS.includes(mins / 60);
+}
+
 export function DurationInput({
   value,
   onChange,
@@ -73,19 +74,63 @@ export function DurationInput({
   id?: string;
   placeholder?: string;
 }) {
+  // The dropdown either holds an hour-preset string ("4") or
+  // CUSTOM_VALUE. When CUSTOM_VALUE, we render the text field below.
+  const initial = (() => {
+    if (!value) return "";
+    const mins = Number(value);
+    if (Number.isFinite(mins) && isPresetMinutes(mins)) {
+      return String(mins / 60);
+    }
+    return CUSTOM_VALUE;
+  })();
+
+  const [select, setSelect] = useState(initial);
   const [text, setText] = useState(() =>
     value ? formatDuration(Number(value)) : "",
   );
   const [error, setError] = useState<string | null>(null);
 
+  // Stay in sync if the parent clears or replaces value.
   useEffect(() => {
     if (!value) {
+      setSelect("");
       setText("");
       setError(null);
+      return;
+    }
+    const mins = Number(value);
+    if (Number.isFinite(mins) && isPresetMinutes(mins)) {
+      setSelect(String(mins / 60));
+      setText(formatDuration(mins));
+    } else if (Number.isFinite(mins)) {
+      setSelect(CUSTOM_VALUE);
+      setText(formatDuration(mins));
     }
   }, [value]);
 
-  function commit(raw: string) {
+  function handleSelectChange(next: string) {
+    setSelect(next);
+    setError(null);
+    if (next === "") {
+      onChange("");
+      setText("");
+      return;
+    }
+    if (next === CUSTOM_VALUE) {
+      // Don't change the underlying value yet — wait for the user to
+      // type something into the custom field.
+      return;
+    }
+    const hours = Number(next);
+    if (Number.isFinite(hours) && hours > 0) {
+      const mins = hours * 60;
+      onChange(String(mins));
+      setText(formatDuration(mins));
+    }
+  }
+
+  function commitCustom(raw: string) {
     if (raw.trim().length === 0) {
       onChange("");
       setError(null);
@@ -103,25 +148,43 @@ export function DurationInput({
 
   return (
     <div className="space-y-1">
-      <input
-        type="text"
+      <select
         id={id}
-        value={text}
-        onChange={(e) => {
-          setText(e.target.value);
-          setError(null);
-        }}
-        onBlur={(e) => commit(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            commit(text);
-          }
-        }}
-        placeholder={placeholder}
-        className="w-full rounded border border-neutral-300 px-2 py-1.5 text-sm"
-        autoComplete="off"
-      />
+        value={select}
+        onChange={(e) => handleSelectChange(e.target.value)}
+        className="w-full rounded border border-neutral-300 px-2 py-1.5 text-sm bg-white"
+      >
+        <option value="">— No duration —</option>
+        {PRESET_HOURS.map((h) => (
+          <option key={h} value={String(h)}>
+            {h === 1 ? "1 hour" : `${h} hours`}
+          </option>
+        ))}
+        <option value={CUSTOM_VALUE}>Custom…</option>
+      </select>
+
+      {select === CUSTOM_VALUE && (
+        <input
+          type="text"
+          value={text}
+          onChange={(e) => {
+            setText(e.target.value);
+            setError(null);
+          }}
+          onBlur={(e) => commitCustom(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              commitCustom(text);
+            }
+          }}
+          placeholder={placeholder}
+          className="w-full rounded border border-neutral-300 px-2 py-1.5 text-sm"
+          autoComplete="off"
+          aria-label="Custom duration"
+        />
+      )}
+
       <input type="hidden" name={name} value={value} />
       {error && <div className="text-xs text-red-600">{error}</div>}
     </div>

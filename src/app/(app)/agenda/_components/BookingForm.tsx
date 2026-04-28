@@ -2,7 +2,6 @@
 
 import { useState, type FormEvent } from "react";
 import { createBookingAction } from "../actions";
-import { BOOKING_STATUSES } from "@/modules/bookings";
 import type { VenueRow } from "@/modules/venues";
 import type { WorkspaceMemberRow } from "@/modules/auth";
 import { DatePicker } from "./DatePicker";
@@ -45,12 +44,27 @@ function combineDateAndTime(
   return d.toISOString();
 }
 
+/**
+ * Status dropdown is simplified to two user-facing options that map
+ * to the underlying enum:
+ *   "Confirmed"     → "booked"
+ *   "Not confirmed" → "hold"
+ * Default for newly-created bookings is "Not confirmed" since most
+ * gigs land as inquiries that the owner hasn't locked in yet.
+ */
+type StatusUiKey = "confirmed" | "not_confirmed";
+function uiKeyToStatus(k: StatusUiKey): "booked" | "hold" {
+  return k === "confirmed" ? "booked" : "hold";
+}
+
 export function BookingForm({
   venues,
   employees,
+  currentMemberId,
 }: {
   venues: VenueRow[];
   employees: WorkspaceMemberRow[];
+  currentMemberId?: string | null;
 }) {
   const [error, setError] = useState<string | null>(null);
   const [conflicts, setConflicts] = useState<{ hard: string[]; possible: string[] } | null>(null);
@@ -59,7 +73,7 @@ export function BookingForm({
   const [expanded, setExpanded] = useState(false);
 
   const [title, setTitle] = useState("");
-  const [status, setStatus] = useState("inquiry");
+  const [statusUi, setStatusUi] = useState<StatusUiKey>("not_confirmed");
   const [allDay, setAllDay] = useState(false);
   const [date, setDate] = useState("");
   const [startTime, setStartTime] = useState("");
@@ -67,7 +81,7 @@ export function BookingForm({
 
   function resetForm() {
     setTitle("");
-    setStatus("inquiry");
+    setStatusUi("not_confirmed");
     setAllDay(false);
     setDate("");
     setStartTime("");
@@ -87,7 +101,7 @@ export function BookingForm({
     // field names via getOrUndef().
     const form = new FormData();
     form.set("title", title);
-    form.set("status", status);
+    form.set("status", uiKeyToStatus(statusUi));
     if (allDay) form.set("all_day", "on");
 
     let startIso = "";
@@ -186,15 +200,12 @@ export function BookingForm({
                 Status
               </span>
               <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
+                value={statusUi}
+                onChange={(e) => setStatusUi(e.target.value as StatusUiKey)}
                 className="w-full rounded border border-neutral-300 px-2 py-1.5 text-sm bg-white"
               >
-                {BOOKING_STATUSES.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
+                <option value="confirmed">Confirmed</option>
+                <option value="not_confirmed">Not confirmed</option>
               </select>
             </label>
 
@@ -252,7 +263,10 @@ export function BookingForm({
               <span className="block text-xs font-medium text-neutral-700 mb-1">
                 Assigned to
               </span>
-              <EmployeeSelect employees={employees} />
+              <EmployeeSelect
+                employees={employees}
+                currentMemberId={currentMemberId}
+              />
             </div>
           </div>
 

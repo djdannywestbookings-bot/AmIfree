@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { getCurrentActor } from "@/server/policies";
+import { NavLinks } from "./_components/NavLinks";
+import { signOutAction } from "./_actions/sign-out";
 
 /**
  * Protected shell layout for all (app)/* routes.
@@ -27,19 +29,6 @@ export default async function AppLayout({
     redirect("/login");
   }
 
-  const navLinks: Array<{ href: string; label: string }> = [
-    { href: "/calendar", label: "Calendar" },
-    { href: "/my-calendar", label: "My Calendar" },
-    { href: "/agenda", label: "Schedule" },
-    { href: "/venues", label: "Venues" },
-    { href: "/employees", label: "Employees" },
-    { href: "/positions", label: "Positions" },
-    { href: "/intake", label: "Intake" },
-    { href: "/timesheet", label: "Timesheet" },
-    { href: "/reports", label: "Reports" },
-    { href: "/settings", label: "Settings" },
-  ];
-
   return (
     <div className="min-h-dvh flex flex-col">
       <header className="bg-white/85 backdrop-blur-sm border-b border-slate-200 sticky top-0 z-20 shadow-card">
@@ -52,25 +41,27 @@ export default async function AppLayout({
             <span className="text-indigo-700">AmI</span>
             <span className="text-teal-500">Free</span>
           </Link>
-          <div className="flex gap-1 flex-1 overflow-x-auto text-slate-600 -mx-1 px-1">
-            {navLinks.map(({ href, label }) => (
-              <Link
-                key={href}
-                href={href}
-                className="px-2.5 py-1.5 rounded-md hover:bg-slate-100 hover:text-indigo-700 transition-colors whitespace-nowrap"
+
+          <NavLinks />
+
+          {/* Identity + persistent log-out, always pinned to the right. */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            <span
+              className="text-xs text-slate-500 hidden sm:inline truncate max-w-[14rem]"
+              aria-label="Signed in as"
+              title={actor.email}
+            >
+              {actor.email}
+            </span>
+            <form action={signOutAction}>
+              <button
+                type="submit"
+                className="text-xs px-2.5 py-1.5 rounded-md border border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors"
               >
-                {label}
-              </Link>
-            ))}
+                Log out
+              </button>
+            </form>
           </div>
-          {/* Reserved slot for future notification entry point. */}
-          <span
-            className="text-xs text-slate-500 hidden sm:inline truncate max-w-[14rem]"
-            aria-label="Signed in as"
-            title={actor.email}
-          >
-            {actor.email}
-          </span>
         </nav>
       </header>
       <div className="flex-1">{children}</div>

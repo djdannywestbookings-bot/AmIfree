@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { updateBookingAction, deleteFromEditAction } from "../actions";
-import { BOOKING_STATUSES, type BookingRow } from "@/modules/bookings";
+import { type BookingRow } from "@/modules/bookings";
 import type { VenueRow } from "@/modules/venues";
 import type { WorkspaceMemberRow } from "@/modules/auth";
 import { DatePicker } from "../../_components/DatePicker";
@@ -50,14 +50,34 @@ function durationMinutesFromStartEnd(
   return String(Math.round((e - s) / 60_000));
 }
 
+/**
+ * The status dropdown surfaces only two user-facing choices —
+ * Confirmed (writes "booked") and Not confirmed (writes "hold") —
+ * because that's the only distinction this audience cares about.
+ * The DB enum keeps its full lifecycle ("inquiry"/"hold"/.../"completed")
+ * so calendar pills, ICS export, and reports keep their richer
+ * coloring; we just present the simplest 2-state view in the form.
+ *
+ * Existing rows with statuses other than "booked" are presented as
+ * "Not confirmed" — saving will normalize them to "hold".
+ */
+function statusToUiKey(s: string): "confirmed" | "not_confirmed" {
+  return s === "booked" ? "confirmed" : "not_confirmed";
+}
+function uiKeyToStatus(k: "confirmed" | "not_confirmed"): "booked" | "hold" {
+  return k === "confirmed" ? "booked" : "hold";
+}
+
 export function EditBookingForm({
   booking,
   venues,
   employees,
+  currentMemberId,
 }: {
   booking: BookingRow;
   venues: VenueRow[];
   employees: WorkspaceMemberRow[];
+  currentMemberId?: string | null;
 }) {
   const initialDateTime = splitIsoToDateAndTime(booking.start_at);
 
@@ -66,7 +86,9 @@ export function EditBookingForm({
   const [conflicts, setConflicts] = useState<{ hard: string[]; possible: string[] } | null>(null);
 
   const [title, setTitle] = useState(booking.title);
-  const [status, setStatus] = useState(booking.status);
+  const [statusUi, setStatusUi] = useState<"confirmed" | "not_confirmed">(
+    statusToUiKey(booking.status),
+  );
   const [allDay, setAllDay] = useState(booking.all_day);
   const [date, setDate] = useState(initialDateTime.date);
   const [startTime, setStartTime] = useState(initialDateTime.time);
@@ -86,7 +108,7 @@ export function EditBookingForm({
     const form = new FormData();
     form.set("id", booking.id);
     form.set("title", title);
-    form.set("status", status);
+    form.set("status", uiKeyToStatus(statusUi));
     if (allDay) form.set("all_day", "on");
 
     if (date && startTime) {
@@ -130,6 +152,7 @@ export function EditBookingForm({
   }
 
   return (
+    <>
     <form onSubmit={handleSubmit} className="space-y-3 border border-neutral-200 rounded-md p-4 bg-white">
       <label className="block">
         <span className="block text-xs font-medium text-neutral-700 mb-1">
@@ -151,15 +174,14 @@ export function EditBookingForm({
             Status
           </span>
           <select
-            value={status}
-            onChange={(e) => setStatus(e.target.value as typeof status)}
+            value={statusUi}
+            onChange={(e) =>
+              setStatusUi(e.target.value as "confirmed" | "not_confirmed")
+            }
             className="w-full rounded border border-neutral-300 px-2 py-1.5 text-sm bg-white"
           >
-            {BOOKING_STATUSES.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
+            <option value="confirmed">Confirmed</option>
+            <option value="not_confirmed">Not confirmed</option>
           </select>
         </label>
 
@@ -214,6 +236,7 @@ export function EditBookingForm({
           <EmployeeSelect
             employees={employees}
             initialAssignedId={booking.assigned_employee_id}
+            currentMemberId={currentMemberId}
           />
         </div>
       </div>
@@ -279,21 +302,23 @@ export function EditBookingForm({
         >
           {pending ? "Saving…" : "Save changes"}
         </button>
-        <div className="flex items-center gap-2">
-          <a
-            href="/agenda"
-            className="text-xs rounded border border-neutral-300 py-2 px-4 hover:bg-neutral-50"
-          >
-            Cancel
-          </a>
-          {/* Native confirm() prompt prevents accidental deletes —
-              this used to be hidden behind a "Danger zone" toggle but
-              users couldn't find it. Now visible, but red-tinted and
-              guarded by a confirmation. */}
-          <DeleteShiftButton bookingId={booking.id} title={booking.title} />
-        </div>
+        <a
+          href="/agenda"
+          className="text-xs rounded border border-neutral-300 py-2 px-4 hover:bg-neutral-50"
+        >
+          Cancel
+        </a>
       </div>
     </form>
+
+    {/* Delete is intentionally a sibling — nested HTML forms get
+        collapsed by the browser, which silently swallowed clicks on
+        the old in-form Delete button. Its own form posts to
+        deleteFromEditAction with a confirm() guard. */}
+    <div className="mt-3 flex justify-end">
+      <DeleteShiftButton bookingId={booking.id} title={booking.title} />
+    </div>
+    </>
   );
 }
 

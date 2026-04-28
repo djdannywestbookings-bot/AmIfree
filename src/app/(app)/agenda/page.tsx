@@ -4,8 +4,9 @@ import {
   listVenues,
   listAssignableEmployees,
   computeScheduleStats,
+  getCurrentMemberId,
 } from "@/server/services";
-import { BOOKING_STATUSES, type BookingRow } from "@/modules/bookings";
+import { type BookingRow } from "@/modules/bookings";
 import type { VenueRow } from "@/modules/venues";
 import type { WorkspaceMemberRow } from "@/modules/auth";
 import { BookingForm } from "./_components/BookingForm";
@@ -15,15 +16,22 @@ import {
   deleteBookingAction,
 } from "./actions";
 
-const STATUS_STYLES: Record<string, string> = {
-  inquiry: "bg-neutral-100 text-neutral-700 border-neutral-200",
-  hold: "bg-amber-50 text-amber-700 border-amber-200",
-  requested: "bg-blue-50 text-blue-700 border-blue-200",
-  assigned: "bg-indigo-50 text-indigo-700 border-indigo-200",
-  booked: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  completed: "bg-neutral-100 text-neutral-500 border-neutral-200",
-  cancelled: "bg-red-50 text-red-700 border-red-200",
-};
+/**
+ * The schedule list collapses the seven-state booking lifecycle into a
+ * binary "Confirmed / Not confirmed" view, matching the simplified
+ * editor. Existing rows with statuses other than "booked" all render as
+ * "Not confirmed" — the DB enum is preserved (calendar pills, ICS
+ * export, and reports keep their richer coloring) so this is purely a
+ * UI projection.
+ */
+function statusUiLabel(s: string): "Confirmed" | "Not confirmed" {
+  return s === "booked" ? "Confirmed" : "Not confirmed";
+}
+function statusUiClass(s: string): string {
+  return s === "booked"
+    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+    : "bg-amber-50 text-amber-700 border-amber-200";
+}
 
 function formatWhen(b: BookingRow): string {
   if (b.all_day && b.service_day) return `${b.service_day} (all day)`;
@@ -69,10 +77,11 @@ function employeeLabel(
 
 export default async function AgendaPage() {
   const workspace = await requireWorkspace();
-  const [bookings, venues, employees] = await Promise.all([
+  const [bookings, venues, employees, currentMemberId] = await Promise.all([
     listBookings(workspace),
     listVenues(workspace),
     listAssignableEmployees(workspace),
+    getCurrentMemberId(workspace),
   ]);
   const venuesById = new Map(venues.map((v) => [v.id, v] as const));
   const employeesById = new Map(employees.map((m) => [m.id, m] as const));
@@ -92,7 +101,11 @@ export default async function AgendaPage() {
 
       <StatsBar stats={stats} />
 
-      <BookingForm venues={venues} employees={employees} />
+      <BookingForm
+        venues={venues}
+        employees={employees}
+        currentMemberId={currentMemberId}
+      />
 
       {bookings.length === 0 ? (
         <div className="border border-dashed border-neutral-300 rounded-md p-8 text-center text-sm text-neutral-500">
@@ -112,11 +125,9 @@ export default async function AgendaPage() {
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-medium truncate">{b.title}</span>
                     <span
-                      className={`inline-block text-xs px-2 py-0.5 rounded border ${
-                        STATUS_STYLES[b.status] ?? STATUS_STYLES.inquiry
-                      }`}
+                      className={`inline-block text-xs px-2 py-0.5 rounded border ${statusUiClass(b.status)}`}
                     >
-                      {b.status}
+                      {statusUiLabel(b.status)}
                     </span>
                     {assignee && (
                       <span className="inline-block text-xs px-2 py-0.5 rounded border bg-indigo-50 text-indigo-700 border-indigo-200">
@@ -162,15 +173,12 @@ export default async function AgendaPage() {
                     <input type="hidden" name="id" value={b.id} />
                     <select
                       name="status"
-                      defaultValue={b.status}
+                      defaultValue={b.status === "booked" ? "booked" : "hold"}
                       className="text-xs rounded border border-neutral-300 px-2 py-1 bg-white"
                       aria-label="Change status"
                     >
-                      {BOOKING_STATUSES.map((s) => (
-                        <option key={s} value={s}>
-                          {s}
-                        </option>
-                      ))}
+                      <option value="booked">Confirmed</option>
+                      <option value="hold">Not confirmed</option>
                     </select>
                     <button
                       type="submit"

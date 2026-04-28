@@ -4,6 +4,7 @@ import {
   getBookingById,
   listVenues,
   listAssignableEmployees,
+  getCurrentMemberId,
 } from "@/server/services";
 import { EditBookingForm } from "./_components/EditBookingForm";
 
@@ -14,10 +15,11 @@ export default async function EditBookingPage({
 }) {
   const workspace = await requireWorkspace();
   const { id } = await params;
-  const [booking, venues, employees] = await Promise.all([
+  const [booking, venues, employees, currentMemberId] = await Promise.all([
     getBookingById(workspace, id),
     listVenues(workspace),
     listAssignableEmployees(workspace),
+    getCurrentMemberId(workspace),
   ]);
 
   if (!booking) {
@@ -35,7 +37,12 @@ export default async function EditBookingPage({
           ← back to schedule
         </a>
       </div>
-      <EditBookingForm booking={booking} venues={venues} employees={employees} />
+      <EditBookingForm
+        booking={booking}
+        venues={venues}
+        employees={employees}
+        currentMemberId={currentMemberId}
+      />
     </main>
   );
 }
