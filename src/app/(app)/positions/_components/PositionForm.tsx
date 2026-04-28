@@ -68,7 +68,6 @@ export function PositionForm({ existing }: { existing?: PositionRow }) {
           onChange={(e) => setName(e.target.value)}
           required
           maxLength={100}
-          placeholder="DJ, Bartender, MC, Sound Tech…"
           list="position-presets"
           className="w-full rounded border border-neutral-300 px-3 py-2 text-sm"
         />

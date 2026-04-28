@@ -96,7 +96,6 @@ export function ProfileSection({
               value={name}
               onChange={(e) => setName(e.target.value)}
               maxLength={120}
-              placeholder="Danny West"
               className="input"
             />
           </label>
@@ -110,7 +109,6 @@ export function ProfileSection({
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               autoComplete="email"
-              placeholder="you@example.com"
               className="input"
             />
             <span className="block text-[11px] text-slate-500 mt-1">
@@ -161,7 +159,6 @@ export function ProfileSection({
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               maxLength={40}
-              placeholder="(555) 123-4567"
               className="input"
             />
           </label>
@@ -175,7 +172,6 @@ export function ProfileSection({
               value={homeAddress}
               onChange={(e) => setHomeAddress(e.target.value)}
               maxLength={500}
-              placeholder="Optional — used only on your profile"
               className="input"
             />
           </label>

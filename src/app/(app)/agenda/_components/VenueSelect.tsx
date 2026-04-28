@@ -69,7 +69,6 @@ export function VenueSelect({
               onChange={(e) => setNewName(e.target.value)}
               required
               maxLength={200}
-              placeholder="Bottle Blonde, The Grand Ballroom, Studio West"
               className="w-full rounded border border-neutral-300 px-2 py-1.5 text-sm"
             />
           </label>
@@ -83,7 +82,6 @@ export function VenueSelect({
               value={newAddress}
               onChange={(e) => setNewAddress(e.target.value)}
               maxLength={500}
-              placeholder="Street, city, state — used in directions later"
               className="w-full rounded border border-neutral-300 px-2 py-1.5 text-sm"
             />
           </label>

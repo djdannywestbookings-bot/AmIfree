@@ -117,7 +117,6 @@ export function EmployeeForm({
             required
             readOnly={isEdit}
             maxLength={254}
-            placeholder="employee@example.com"
             className={`w-full rounded border border-neutral-300 px-3 py-2 text-sm ${isEdit ? "bg-neutral-50" : ""}`}
           />
         </label>
@@ -133,7 +132,6 @@ export function EmployeeForm({
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             maxLength={60}
-            placeholder="(555) 555-5555"
             className="w-full rounded border border-neutral-300 px-3 py-2 text-sm"
           />
         </label>

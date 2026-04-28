@@ -250,7 +250,6 @@ export function EditBookingForm({
           value={location}
           onChange={(e) => setLocation(e.target.value)}
           maxLength={500}
-          placeholder="Hotel ballroom downtown, client's house, etc."
           className="mt-2 w-full rounded border border-neutral-300 px-2 py-1.5 text-sm"
         />
       </details>

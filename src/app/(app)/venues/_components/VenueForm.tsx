@@ -67,16 +67,21 @@ export function VenueForm({
     }
     if (result.name) setName(result.name);
     if (result.address) setAddress(result.address);
+    if (result.phone) setContactPhone(result.phone);
 
-    if (result.name && result.address) {
+    const got: string[] = [];
+    if (result.name) got.push("name");
+    if (result.address) got.push("address");
+    if (result.phone) got.push("phone");
+    const missing: string[] = [];
+    if (!result.name) missing.push("name");
+    if (!result.address) missing.push("address");
+
+    if (missing.length === 0) {
       setImportMessage("Imported. Review the fields and save.");
-    } else if (result.name) {
+    } else if (got.length > 0) {
       setImportMessage(
-        "Got the venue name. Couldn't read the address — fill it in below.",
-      );
-    } else if (result.address) {
-      setImportMessage(
-        "Got the address. Couldn't read the name — fill it in below.",
+        `Got ${got.join(" + ")}. Couldn't read ${missing.join(" + ")} — fill in below.`,
       );
     }
     setImportUrl("");
@@ -231,7 +236,6 @@ export function VenueForm({
               onChange={(e) => setName(e.target.value)}
               required
               maxLength={200}
-              placeholder="Bottle Blonde, The Grand Ballroom, Studio West"
               className="w-full rounded border border-neutral-300 px-3 py-2 text-sm"
             />
           </label>
@@ -245,7 +249,6 @@ export function VenueForm({
               value={address}
               onChange={(e) => setAddress(e.target.value)}
               maxLength={500}
-              placeholder="1 AT&T Way, Arlington, TX 76011"
               className="w-full rounded border border-neutral-300 px-3 py-2 text-sm"
             />
           </label>
@@ -267,7 +270,6 @@ export function VenueForm({
                 value={contactName}
                 onChange={(e) => setContactName(e.target.value)}
                 maxLength={200}
-                placeholder="GM, security, promoter…"
                 className="w-full rounded border border-neutral-300 px-2 py-1.5 text-sm"
               />
             </label>
@@ -280,7 +282,6 @@ export function VenueForm({
                 value={contactPhone}
                 onChange={(e) => setContactPhone(e.target.value)}
                 maxLength={60}
-                placeholder="(555) 555-5555"
                 className="w-full rounded border border-neutral-300 px-2 py-1.5 text-sm"
               />
             </label>
@@ -295,7 +296,6 @@ export function VenueForm({
               onChange={(e) => setNotes(e.target.value)}
               rows={4}
               maxLength={5000}
-              placeholder="Load-in details, parking, house engineer, door splits, anything that helps next time."
               className="w-full rounded border border-neutral-300 px-2 py-1.5 text-sm"
             />
           </label>

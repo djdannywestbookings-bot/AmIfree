@@ -178,7 +178,6 @@ export function BookingForm({
             maxLength={200}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Saturday headliner, Smith Wedding, Client consult…"
             className="w-full rounded border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900"
             onFocus={() => setExpanded(true)}
           />
@@ -278,7 +277,6 @@ export function BookingForm({
               type="text"
               name="location"
               maxLength={500}
-              placeholder="Hotel ballroom downtown, client's house, etc."
               className="mt-2 w-full rounded border border-neutral-300 px-2 py-1.5 text-sm"
             />
           </details>
@@ -291,7 +289,6 @@ export function BookingForm({
               type="text"
               name="pay"
               maxLength={200}
-              placeholder="$300, 300 + tips, TBD, split 50/50…"
               className="w-full rounded border border-neutral-300 px-2 py-1.5 text-sm"
             />
           </label>
@@ -304,7 +301,6 @@ export function BookingForm({
               name="notes"
               rows={2}
               maxLength={10000}
-              placeholder="Contact person, equipment needed, context…"
               className="w-full rounded border border-neutral-300 px-2 py-1.5 text-sm"
             />
           </label>
