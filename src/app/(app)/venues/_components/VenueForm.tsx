@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { createVenueAction, updateVenueAction } from "../actions";
 import { importVenueFromUrlAction } from "../import-actions";
 import type { VenueRow } from "@/modules/venues";
@@ -18,7 +18,18 @@ import { VenueMapPreview } from "./VenueMapPreview";
  * Phase 37: adds contact name, contact phone, notes, and a map
  * preview that updates as the address is typed.
  */
-export function VenueForm({ existing }: { existing?: VenueRow }) {
+export function VenueForm({
+  existing,
+  initialImportUrl,
+}: {
+  existing?: VenueRow;
+  /**
+   * If provided (e.g. from Web Share Target landing on
+   * /venues/new?import_url=…), the form auto-runs the importer on
+   * mount and clears the URL param so a refresh doesn't re-import.
+   */
+  initialImportUrl?: string;
+}) {
   const isEdit = Boolean(existing);
   const [name, setName] = useState(existing?.name ?? "");
   const [address, setAddress] = useState(existing?.address ?? "");
@@ -30,13 +41,14 @@ export function VenueForm({ existing }: { existing?: VenueRow }) {
   const [error, setError] = useState<string | null>(null);
 
   // Google Maps import row state.
-  const [importUrl, setImportUrl] = useState("");
+  const [importUrl, setImportUrl] = useState(initialImportUrl ?? "");
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
   const [importMessage, setImportMessage] = useState<string | null>(null);
+  const autoImportFiredRef = useRef(false);
 
-  async function handleImport() {
-    if (!importUrl.trim()) {
+  async function runImport(urlToImport: string) {
+    if (!urlToImport.trim()) {
       setImportError("Paste a Google Maps URL first.");
       return;
     }
@@ -45,7 +57,7 @@ export function VenueForm({ existing }: { existing?: VenueRow }) {
     setImportMessage(null);
 
     const form = new FormData();
-    form.set("url", importUrl);
+    form.set("url", urlToImport);
     const result = await importVenueFromUrlAction(form);
     setImporting(false);
 
@@ -69,6 +81,28 @@ export function VenueForm({ existing }: { existing?: VenueRow }) {
     }
     setImportUrl("");
   }
+
+  function handleImport() {
+    void runImport(importUrl);
+  }
+
+  // Web Share Target hand-off: if the page was opened from a native
+  // share sheet (manifest declares /venues/new as a share_target),
+  // auto-run the importer on mount and clear the URL param so a
+  // refresh doesn't re-fire.
+  useEffect(() => {
+    if (autoImportFiredRef.current) return;
+    if (!initialImportUrl || initialImportUrl.trim().length === 0) return;
+    autoImportFiredRef.current = true;
+    void runImport(initialImportUrl);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("import_url");
+      url.searchParams.delete("share_title");
+      window.history.replaceState(null, "", url.toString());
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialImportUrl]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -143,6 +177,36 @@ export function VenueForm({ existing }: { existing?: VenueRow }) {
           >
             {importing ? "Importing…" : "Import"}
           </button>
+        </div>
+        <div className="flex items-center gap-3 text-[11px] text-slate-500 flex-wrap">
+          <a
+            href="https://www.google.com/maps"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-indigo-700 hover:text-indigo-800 underline-offset-2 hover:underline"
+          >
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden
+            >
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+              <circle cx="12" cy="10" r="3" />
+            </svg>
+            Find on Google Maps
+            <span aria-hidden>↗</span>
+          </a>
+          <span className="text-slate-400">·</span>
+          <span>
+            On phone? Install AmIFree to your home screen, then use{" "}
+            <em>Share → AmIFree</em> from any Maps page.
+          </span>
         </div>
         {importMessage && (
           <p className="text-xs text-emerald-700">{importMessage}</p>
