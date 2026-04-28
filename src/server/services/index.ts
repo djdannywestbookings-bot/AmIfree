@@ -89,3 +89,9 @@ export {
   setInquiryStatus,
   confirmInquiryAsBooking,
 } from "./inquiries";
+export {
+  getActiveSubscription,
+  isPro,
+  upsertSubscriptionFromStripe,
+  markSubscriptionCanceled,
+} from "./subscriptions";
