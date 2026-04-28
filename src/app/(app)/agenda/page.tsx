@@ -15,6 +15,7 @@ import {
   updateBookingStatusAction,
   deleteBookingAction,
 } from "./actions";
+import { buildMapsUrl } from "@/lib/maps-link";
 
 /**
  * The schedule list collapses the seven-state booking lifecycle into a
@@ -116,6 +117,14 @@ export default async function AgendaPage() {
           {bookings.map((b) => {
             const venue = venueLabel(b, venuesById);
             const assignee = employeeLabel(b, employeesById);
+            // Build a maps URL when the booking has either a venue
+            // (use its name + address) or a free-form location.
+            const venueRow = b.venue_id ? venuesById.get(b.venue_id) : null;
+            const mapsUrl = venueRow?.address
+              ? buildMapsUrl(venueRow.name, venueRow.address)
+              : b.location
+              ? buildMapsUrl(b.location)
+              : null;
             return (
               <li
                 key={b.id}
@@ -143,8 +152,18 @@ export default async function AgendaPage() {
                       {venue && (
                         <div className="flex gap-2">
                           <dt className="text-neutral-500 w-16 shrink-0">Venue</dt>
-                          <dd className="text-neutral-700 min-w-0 break-words">
-                            {venue}
+                          <dd className="text-neutral-700 min-w-0 break-words flex items-baseline gap-2 flex-wrap">
+                            <span>{venue}</span>
+                            {mapsUrl && (
+                              <a
+                                href={mapsUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[11px] text-indigo-600 hover:text-indigo-700 underline-offset-2 hover:underline whitespace-nowrap"
+                              >
+                                Maps ↗
+                              </a>
+                            )}
                           </dd>
                         </div>
                       )}

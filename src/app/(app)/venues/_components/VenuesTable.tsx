@@ -4,6 +4,7 @@ import { useMemo, useRef, useState, useEffect } from "react";
 import Link from "next/link";
 import type { VenueRow } from "@/modules/venues";
 import { deleteVenueAction } from "../actions";
+import { buildMapsUrl } from "@/lib/maps-link";
 
 /**
  * VenuesTable — Sling-style locations list (Phase 33).
@@ -179,8 +180,29 @@ function VenueRowItem({
       >
         {venue.name}
       </Link>
-      <span className="text-neutral-600 truncate">
-        {venue.address ?? <span className="text-neutral-400">—</span>}
+      <span className="text-neutral-600 truncate flex items-center gap-2 min-w-0">
+        {venue.address ? (
+          <>
+            <span className="truncate">{venue.address}</span>
+            {(() => {
+              const mapsUrl = buildMapsUrl(venue.name, venue.address);
+              return mapsUrl ? (
+                <a
+                  href={mapsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="shrink-0 text-[11px] text-indigo-600 hover:text-indigo-700 underline-offset-2 hover:underline whitespace-nowrap"
+                  aria-label={`Open ${venue.name} in Maps`}
+                >
+                  Maps ↗
+                </a>
+              ) : null;
+            })()}
+          </>
+        ) : (
+          <span className="text-neutral-400">—</span>
+        )}
       </span>
       <span className="flex items-center gap-2">
         <span
