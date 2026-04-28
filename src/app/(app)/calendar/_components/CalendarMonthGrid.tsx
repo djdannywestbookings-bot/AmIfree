@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import type { BookingRow } from "@/modules/bookings";
 import type { VenueRow } from "@/modules/venues";
 
@@ -159,6 +159,11 @@ export function CalendarMonthGrid({
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
   const [view, setView] = useState<ViewMode>(1);
+  // Day-detail modal state — set when the user taps a day cell.
+  const [selectedDay, setSelectedDay] = useState<{
+    date: Date;
+    shifts: BookingRow[];
+  } | null>(null);
 
   const venuesById = useMemo(
     () => new Map(venues.map((v) => [v.id, v] as const)),
@@ -166,6 +171,11 @@ export function CalendarMonthGrid({
   );
 
   const byDate = useMemo(() => bucketShiftsByDate(shifts), [shifts]);
+
+  function openDay(date: Date, dayShifts: BookingRow[]) {
+    if (dayShifts.length === 0) return;
+    setSelectedDay({ date, shifts: dayShifts });
+  }
 
   function step(delta: number) {
     // delta is +1 / -1; multiplied by view to step by the view's range.
@@ -242,6 +252,7 @@ export function CalendarMonthGrid({
           month={viewMonth}
           byDate={byDate}
           venuesById={venuesById}
+          onSelectDay={openDay}
         />
       ) : (
         <MultiMonth
@@ -255,6 +266,16 @@ export function CalendarMonthGrid({
             setViewMonth(m);
             setView(1);
           }}
+          onSelectDay={openDay}
+        />
+      )}
+
+      {selectedDay && (
+        <DayDetailModal
+          date={selectedDay.date}
+          shifts={selectedDay.shifts}
+          venuesById={venuesById}
+          onClose={() => setSelectedDay(null)}
         />
       )}
     </div>
@@ -313,11 +334,13 @@ function FullMonth({
   month,
   byDate,
   venuesById,
+  onSelectDay,
 }: {
   year: number;
   month: number;
   byDate: Map<string, BookingRow[]>;
   venuesById: Map<string, VenueRow>;
+  onSelectDay: (date: Date, shifts: BookingRow[]) => void;
 }) {
   const cells = useMemo(
     () => buildMonthGrid(year, month, byDate),
@@ -337,6 +360,7 @@ function FullMonth({
       {cells.map((cell, i) => {
         const visible = cell.shifts.slice(0, MAX_PILLS);
         const overflow = cell.shifts.length - visible.length;
+        const hasShifts = cell.shifts.length > 0;
         return (
           <div
             key={i}
@@ -345,16 +369,35 @@ function FullMonth({
               cell.inMonth ? "" : "bg-slate-50/50 text-slate-400",
             ].join(" ")}
           >
-            <div
-              className={[
-                "text-xs",
-                cell.isToday
-                  ? "inline-flex items-center justify-center w-5 h-5 rounded-full bg-indigo-600 text-white"
-                  : "text-slate-500",
-              ].join(" ")}
-            >
-              {cell.date.getDate()}
-            </div>
+            {/* Day number — clicking opens the day detail modal for
+             *  days that have any bookings. Days without shifts stay
+             *  non-interactive so empty cells don't feel like buttons. */}
+            {hasShifts ? (
+              <button
+                type="button"
+                onClick={() => onSelectDay(cell.date, cell.shifts)}
+                className={[
+                  "text-xs self-start hover:underline underline-offset-2 cursor-pointer",
+                  cell.isToday
+                    ? "inline-flex items-center justify-center w-5 h-5 rounded-full bg-indigo-600 text-white hover:no-underline"
+                    : "text-slate-500",
+                ].join(" ")}
+                aria-label={`See ${cell.shifts.length} booking${cell.shifts.length === 1 ? "" : "s"} on this day`}
+              >
+                {cell.date.getDate()}
+              </button>
+            ) : (
+              <span
+                className={[
+                  "text-xs",
+                  cell.isToday
+                    ? "inline-flex items-center justify-center w-5 h-5 rounded-full bg-indigo-600 text-white"
+                    : "text-slate-500",
+                ].join(" ")}
+              >
+                {cell.date.getDate()}
+              </span>
+            )}
             {visible.map((s) => (
               <a
                 key={s.id}
@@ -367,9 +410,13 @@ function FullMonth({
               </a>
             ))}
             {overflow > 0 && (
-              <span className="text-[11px] text-slate-500">
+              <button
+                type="button"
+                onClick={() => onSelectDay(cell.date, cell.shifts)}
+                className="text-[11px] text-indigo-600 hover:text-indigo-700 hover:underline self-start"
+              >
                 +{overflow} more
-              </span>
+              </button>
             )}
           </div>
         );
@@ -385,6 +432,7 @@ function MultiMonth({
   byDate,
   venuesById,
   onJumpToMonth,
+  onSelectDay,
 }: {
   startYear: number;
   startMonth: number;
@@ -392,6 +440,7 @@ function MultiMonth({
   byDate: Map<string, BookingRow[]>;
   venuesById: Map<string, VenueRow>;
   onJumpToMonth: (year: number, month: number) => void;
+  onSelectDay: (date: Date, shifts: BookingRow[]) => void;
 }) {
   const months = Array.from({ length: count }, (_, i) => {
     const d = new Date(startYear, startMonth + i, 1);
@@ -415,6 +464,7 @@ function MultiMonth({
           byDate={byDate}
           venuesById={venuesById}
           onJump={() => onJumpToMonth(year, month)}
+          onSelectDay={onSelectDay}
         />
       ))}
     </div>
@@ -427,12 +477,14 @@ function MiniMonth({
   byDate,
   venuesById,
   onJump,
+  onSelectDay,
 }: {
   year: number;
   month: number;
   byDate: Map<string, BookingRow[]>;
   venuesById: Map<string, VenueRow>;
   onJump: () => void;
+  onSelectDay: (date: Date, shifts: BookingRow[]) => void;
 }) {
   const cells = useMemo(
     () => buildMonthGrid(year, month, byDate),
@@ -473,18 +525,27 @@ function MiniMonth({
             .map((s) => shiftDotColor(s, venuesById));
           const overflow = cell.shifts.length - dotColors.length;
           const hasShifts = cell.shifts.length > 0;
+          // Days with shifts open the day-detail modal so users can
+          // see ALL bookings on that date instead of being forced into
+          // edit-mode on the first one.
+          const Wrapper: "button" | "div" = hasShifts && cell.inMonth ? "button" : "div";
+          const wrapperProps =
+            hasShifts && cell.inMonth
+              ? {
+                  type: "button" as const,
+                  onClick: () => onSelectDay(cell.date, cell.shifts),
+                }
+              : {};
           return (
-            <a
+            <Wrapper
               key={i}
-              href={
-                hasShifts && cell.inMonth
-                  ? `/agenda/${cell.shifts[0].id}`
-                  : undefined
-              }
+              {...wrapperProps}
               className={[
                 "bg-white px-1 py-1 min-h-[44px] flex flex-col items-center text-[10px] tabular-nums",
                 cell.inMonth ? "" : "bg-slate-50/60 text-slate-300",
-                hasShifts ? "hover:bg-indigo-50/40 cursor-pointer" : "",
+                hasShifts && cell.inMonth
+                  ? "hover:bg-indigo-50/50 cursor-pointer"
+                  : "",
               ].join(" ")}
               title={
                 hasShifts
@@ -519,9 +580,153 @@ function MiniMonth({
                   )}
                 </span>
               )}
-            </a>
+            </Wrapper>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- *
+ * DayDetailModal — opens when the user taps a day cell that has any
+ * bookings. Shows the date and lists every booking on that day with a
+ * link to its edit page. Backdrop click + Escape close.
+ * -------------------------------------------------------------------------- */
+
+function DayDetailModal({
+  date,
+  shifts,
+  venuesById,
+  onClose,
+}: {
+  date: Date;
+  shifts: BookingRow[];
+  venuesById: Map<string, VenueRow>;
+  onClose: () => void;
+}) {
+  // Escape closes the modal.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  const dateLabel = date.toLocaleDateString(undefined, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Bookings on ${dateLabel}`}
+      className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fade-in"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div className="card w-full max-w-md max-h-[80vh] overflow-hidden flex flex-col">
+        <header className="px-5 py-4 border-b border-slate-200 flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-base font-semibold text-slate-900 leading-tight">
+              {dateLabel}
+            </h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {shifts.length} booking{shifts.length === 1 ? "" : "s"} scheduled
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-slate-400 hover:text-slate-700 transition-colors p-1 -m-1"
+            aria-label="Close"
+          >
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden
+            >
+              <path d="M18 6 6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </header>
+
+        <ul className="overflow-y-auto divide-y divide-slate-100">
+          {shifts.map((s) => {
+            const venue = s.venue_id ? venuesById.get(s.venue_id) : null;
+            const time = s.start_at
+              ? new Date(s.start_at).toLocaleTimeString(undefined, {
+                  hour: "numeric",
+                  minute: "2-digit",
+                })
+              : "Time TBD";
+            const end = s.end_at
+              ? new Date(s.end_at).toLocaleTimeString(undefined, {
+                  hour: "numeric",
+                  minute: "2-digit",
+                })
+              : null;
+            const dotColor = shiftDotColor(s, venuesById);
+            const statusLabel = s.status === "booked" ? "Confirmed" : "Not confirmed";
+            const statusClass =
+              s.status === "booked"
+                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                : "bg-amber-50 text-amber-700 border-amber-200";
+            return (
+              <li key={s.id}>
+                <a
+                  href={`/agenda/${s.id}`}
+                  className="flex items-start gap-3 px-5 py-3 hover:bg-slate-50 transition-colors"
+                >
+                  <span
+                    className="w-2 h-2 rounded-full mt-1.5 shrink-0"
+                    style={{ backgroundColor: dotColor }}
+                    aria-hidden
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-medium text-slate-900 truncate">
+                        {s.title}
+                      </span>
+                      <span
+                        className={`inline-block text-[10px] px-1.5 py-0.5 rounded border ${statusClass}`}
+                      >
+                        {statusLabel}
+                      </span>
+                    </div>
+                    <div className="text-xs text-slate-500 mt-0.5 tabular-nums">
+                      {time}
+                      {end && ` – ${end}`}
+                    </div>
+                    {venue && (
+                      <div className="text-xs text-slate-500 truncate">
+                        {venue.name}
+                      </div>
+                    )}
+                  </div>
+                  <span
+                    className="text-slate-400 self-center"
+                    aria-hidden
+                  >
+                    ›
+                  </span>
+                </a>
+              </li>
+            );
+          })}
+        </ul>
       </div>
     </div>
   );
