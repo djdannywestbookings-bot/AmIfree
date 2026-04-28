@@ -38,6 +38,7 @@ export {
   loginAttachPendingInvites,
   getCurrentMemberRole,
   getCurrentMemberId,
+  getCurrentMember,
   listAssignableEmployees,
 } from "./employees";
 export {

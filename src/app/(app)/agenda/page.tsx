@@ -192,7 +192,7 @@ export default async function AgendaPage() {
                     href={`/agenda/${b.id}`}
                     className="text-xs rounded border border-neutral-300 px-2 py-1 hover:bg-neutral-50"
                   >
-                    Edit
+                    Open
                   </a>
 
                   <form action={deleteBookingAction}>

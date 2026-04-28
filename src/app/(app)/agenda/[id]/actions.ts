@@ -147,7 +147,10 @@ export async function updateBookingAction(
 
   revalidatePath("/agenda");
   revalidatePath(`/agenda/${parsed.data.id}`);
-  redirect("/agenda");
+  // Land on the read-only detail view so the user sees the saved
+  // changes immediately. They can hit Edit again or go back to the
+  // schedule list from there.
+  redirect(`/agenda/${parsed.data.id}`);
 }
 
 const deleteSchema = z.object({ id: z.string().uuid() });

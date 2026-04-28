@@ -247,6 +247,28 @@ export async function getCurrentMemberId(
 }
 
 /**
+ * Get the full workspace_members row for the currently signed-in user.
+ * Used by the profile section in /settings.
+ */
+export async function getCurrentMember(
+  workspace: Pick<WorkspaceRow, "id">,
+): Promise<WorkspaceMemberRow | null> {
+  const supabase = await createServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+  const { data } = await supabase
+    .from("workspace_members")
+    .select("*")
+    .eq("workspace_id", workspace.id)
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (!data) return null;
+  return workspaceMemberRowSchema.parse(data);
+}
+
+/**
  * Phase 40 — list employees that can be assigned to a shift.
  * Excludes disabled members. Pending invites can be assigned (so an
  * owner can pre-fill the schedule before the team has signed in).

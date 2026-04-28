@@ -48,6 +48,8 @@ export const workspaceMemberRowSchema = z.object({
   email: z.string().email().nullable().default(null),
   name: z.string().nullable().default(null),
   phone: z.string().nullable().default(null),
+  // Phase added with migration 0014 — free-form home/mailing address.
+  home_address: z.string().nullable().default(null),
   status: z.enum(MEMBER_STATUSES).default("joined"),
   invited_at: z.string().datetime({ offset: true }).nullable().default(null),
   joined_at: z.string().datetime({ offset: true }).nullable().default(null),

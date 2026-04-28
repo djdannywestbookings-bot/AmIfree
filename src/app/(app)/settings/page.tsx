@@ -1,16 +1,20 @@
 import { headers } from "next/headers";
-import { requireWorkspace } from "@/server/services";
-import { signOut } from "./actions";
+import {
+  requireWorkspace,
+  getCurrentMember,
+} from "@/server/services";
+import { ProfileSection } from "./_components/ProfileSection";
+import { ServiceDaySection } from "./_components/ServiceDaySection";
 import { CalendarSyncSection } from "./_components/CalendarSyncSection";
 import { TimezoneSection } from "./_components/TimezoneSection";
 
 export default async function SettingsPage() {
   const workspace = await requireWorkspace();
+  const member = await getCurrentMember(workspace);
 
-  // Build the absolute base URL from the request so the iCal URL
-  // works in dev (localhost), preview, and production.
+  // Build the absolute base URL for the iCal feed link.
   const h = await headers();
-  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "am-ifree.vercel.app";
+  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "amifreescheduler.com";
   const proto = h.get("x-forwarded-proto") ?? "https";
   const baseUrl = `${proto}://${host}`;
 
@@ -18,23 +22,17 @@ export default async function SettingsPage() {
     <main className="max-w-screen-md mx-auto p-4 sm:p-8 space-y-6">
       <h1 className="text-2xl font-semibold">Settings</h1>
 
-      <section className="border border-neutral-200 rounded-md p-5 bg-white space-y-3">
-        <h2 className="text-lg font-semibold text-indigo-700">Workspace</h2>
-        <dl className="text-sm space-y-1">
-          <div className="flex gap-2">
-            <dt className="text-neutral-500 w-32">Name</dt>
-            <dd className="font-medium">{workspace.name}</dd>
-          </div>
-          <div className="flex gap-2">
-            <dt className="text-neutral-500 w-32">Service day</dt>
-            <dd className="font-medium">
-              {workspace.service_day_mode === "nightlife"
-                ? `nightlife (ends at ${workspace.nightlife_cutoff_hour}:00am)`
-                : "standard (midnight cutoff)"}
-            </dd>
-          </div>
-        </dl>
-      </section>
+      <ProfileSection
+        initialName={member?.name ?? workspace.name ?? ""}
+        initialEmail={member?.email ?? ""}
+        initialPhone={member?.phone ?? ""}
+        initialHomeAddress={member?.home_address ?? ""}
+      />
+
+      <ServiceDaySection
+        initialMode={workspace.service_day_mode}
+        initialCutoffHour={workspace.nightlife_cutoff_hour}
+      />
 
       <TimezoneSection initialTimezone={workspace.timezone} />
 
@@ -42,18 +40,6 @@ export default async function SettingsPage() {
         initialToken={workspace.calendar_token}
         baseUrl={baseUrl}
       />
-
-      <section className="border border-neutral-200 rounded-md p-5 bg-white">
-        <h2 className="text-lg font-semibold text-indigo-700 mb-3">Account</h2>
-        <form action={signOut}>
-          <button
-            type="submit"
-            className="rounded border border-neutral-300 py-2 px-4 text-sm hover:bg-neutral-100"
-          >
-            Sign out
-          </button>
-        </form>
-      </section>
     </main>
   );
 }
